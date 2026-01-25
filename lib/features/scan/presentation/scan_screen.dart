@@ -78,18 +78,25 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppTheme.surface.withOpacity(0.8),
+                  color: AppTheme.primary, // White
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppTheme.surface),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withOpacity(0.2),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    )
+                  ],
                 ),
                 child: TextField(
                   controller: _textController,
-                  style: AppTheme.bodyLarge,
+                  style: const TextStyle(color: Colors.black, fontFamily: 'Inter', fontSize: 16),
+                  cursorColor: Colors.black,
                   decoration: const InputDecoration(
                     hintText: 'Paste suspicious text...',
-                    hintStyle: TextStyle(color: AppTheme.textSecondary),
+                    hintStyle: TextStyle(color: Colors.grey),
                     border: InputBorder.none,
-                    suffixIcon: Icon(Icons.paste, color: AppTheme.textSecondary),
+                    suffixIcon: Icon(Icons.paste, color: Colors.grey),
                   ),
                   onSubmitted: (_) => _onSubmit(),
                 ),
