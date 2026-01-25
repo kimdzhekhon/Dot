@@ -51,7 +51,6 @@ class AppTheme {
         secondary: analyzing,
         surface: surface,
         error: dangerous,
-        background: background,
       ),
       useMaterial3: true,
       fontFamily: 'Inter',

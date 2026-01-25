@@ -7,7 +7,6 @@ import 'package:dot/features/scan/presentation/dot_animation.dart';
 import 'package:dot/features/scan/presentation/scan_controller.dart';
 import 'package:dot/features/scan/domain/scan_type.dart';
 import 'package:dot/features/scan/presentation/phone_number_formatter.dart';
-import 'package:flutter/services.dart';
 
 
 
@@ -64,7 +63,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     return AppResponsiveLayout(
       // Ensure the background is light gray for the whole screen
       child: Container(
-        color: const Color(0xFFF5F5F7), // Light Gray (iOS System Gray 6ish)
+        color: AppTheme.surface, // Use theme surface color (#F2F2F7)
         child: SafeArea( // Apply SafeArea as requested
           child: Stack(
             children: [
@@ -82,7 +81,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               if (dotState == DotState.analyzing)
                 Positioned.fill(
                   child: Container(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -159,7 +158,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -251,7 +250,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildSegmentedPhoneInput(state),
+                    child: _buildPhoneInput(state),
                   ),
                 ),
                 Positioned(
@@ -275,7 +274,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -377,8 +376,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               state.message ?? '',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
+                fontSize: 20,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
                 height: 1.4,
               ),
             ),
@@ -388,7 +388,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -479,128 +479,56 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
   }
 
-  Widget _buildSegmentedPhoneInput(ScanState state) {
-    final text = _textController.text;
-    final clean = text.replaceAll('-', '');
-    
-    String p1 = '';
-    String p2 = '';
-    String p3 = '';
-
-    if (clean.isNotEmpty) {
-      if (clean.startsWith('02')) {
-        // Seoul 02-XXX-XXXX or 02-XXXX-XXXX
-        p1 = clean.substring(0, clean.length < 2 ? clean.length : 2);
-        if (clean.length > 2) {
-          int mid = clean.length <= 9 ? 5 : 6;
-          p2 = clean.substring(2, clean.length < mid ? clean.length : mid);
-          if (clean.length > mid) {
-            p3 = clean.substring(mid);
-          }
-        }
-      } else {
-        // Standard 000-0000-0000 (3-4-4)
-        p1 = clean.substring(0, clean.length < 3 ? clean.length : 3);
-        if (clean.length > 3) {
-          // Changed mid to handle 3-4-4 correctly
-          int mid = clean.length <= 6 ? clean.length : 7; 
-          p2 = clean.substring(3, clean.length < 7 ? clean.length : 7);
-          if (clean.length > 7) {
-            p3 = clean.substring(7);
-          }
-        }
-      }
-    }
-
-    return Container(
-      height: 100, // Adjusted height
-      width: double.infinity,
-      color: Colors.transparent,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Display UI (Back)
-          IgnorePointer(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center, // Ensure center alignment
-              children: [
-                _buildUnderlineBox(p1, clean.startsWith('02') ? 2 : 3),
-                _buildSeparator(),
-                _buildUnderlineBox(p2, clean.startsWith('02') ? (clean.length <= 9 ? 3 : 4) : 4), 
-                _buildSeparator(),
-                _buildUnderlineBox(p3, 4),
-              ],
-            ),
+  Widget _buildPhoneInput(ScanState state) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '전화번호 입력',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
           ),
-
-          // Hidden TextField (Front)
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0,
-              child: TextField(
-                controller: _textController,
-                focusNode: _phoneFocusNode,
-                keyboardType: TextInputType.number,
-                inputFormatters: [PhoneNumberFormatter()],
-                autofocus: true,
-                style: const TextStyle(fontSize: 1),
-                decoration: const InputDecoration(border: InputBorder.none),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.black12,
+                width: 2,
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-
-
-  Widget _buildUnderlineBox(String value, int maxLength) {
-    return Container(
-      width: maxLength == 2 ? 60 : (maxLength == 3 ? 80 : 100),
-      height: 60,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: value.length == maxLength ? AppTheme.analyzing : Colors.black12,
-            width: 2,
-          ),
-        ),
-      ),
-      child: Center(
-        child: Text(
-          value.isEmpty ? '0' * maxLength : value,
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: value.isEmpty ? Colors.black12 : Colors.black87,
-            letterSpacing: 2,
-            height: 1.0, // Force line height to 1.0 for better centering
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSeparator() {
-    return const SizedBox(
-      height: 60,
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            '-',
-            style: TextStyle(
-              fontSize: 24, 
-              color: Colors.black26, 
+          child: TextField(
+            controller: _textController,
+            focusNode: _phoneFocusNode,
+            keyboardType: TextInputType.number,
+            inputFormatters: [PhoneNumberFormatter()],
+            autofocus: true,
+            textAlign: TextAlign.left,
+            style: const TextStyle(
+              fontSize: 28,
               fontWeight: FontWeight.bold,
-              height: 1.0,
+              color: Colors.black87,
+            ),
+            decoration: InputDecoration(
+              hintText: '전화번호를 입력해 주세요',
+              hintStyle: TextStyle(
+                color: Colors.black12,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 

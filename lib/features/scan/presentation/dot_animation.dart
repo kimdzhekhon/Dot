@@ -121,7 +121,7 @@ class _DotAnimationState extends State<DotAnimation> with TickerProviderStateMix
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.3),
+                        color: color.withValues(alpha: 0.3),
                         blurRadius: 40,
                         spreadRadius: 10,
                       )
@@ -156,7 +156,7 @@ class _DotAnimationState extends State<DotAnimation> with TickerProviderStateMix
                       shape: BoxShape.circle,
                       border: Border.fromBorderSide(
                         BorderSide(
-                          color: color.withOpacity(0.5),
+                          color: color.withValues(alpha: 0.5),
                           width: 2,
                           style: BorderStyle.solid,
                         ),
