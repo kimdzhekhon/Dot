@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'dart:io' show Platform;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/network/dio_client.dart';
