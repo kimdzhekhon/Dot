@@ -37,7 +37,7 @@ class ScanRepositoryImpl implements ScanRepository {
           return Right(const ScanResult(
             score: 50, // Threshold for warning
             isSafe: false, 
-            message: "검색 결과가 없습니다.",
+            message: "공공기관 정보공개 데이터에 없습니다",
           ));
         }
 

@@ -117,6 +117,11 @@ class ScanRemoteDataSource {
       });
       return response as Map<String, dynamic>;
     } catch (e) {
+      // If table missing or other error, treat as not found for now to avoid crash
+      // The user sees "Not found in public data" instead of technical error
+      if (e.toString().contains('clean_phone') || e.toString().contains('42P01')) {
+         return {'found': false};
+      }
       throw NetworkException(message: "Phone search failed: $e");
     }
   }

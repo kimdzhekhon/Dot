@@ -47,7 +47,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final text = _textController.text;
     if (text.isNotEmpty) {
       ref.read(scanProvider.notifier).analyzeText(text);
-      _textController.clear();
+      // _textController.clear(); // Keep text for re-analysis
       FocusScope.of(context).unfocus();
     }
   }
@@ -358,14 +358,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             const SizedBox(height: 40),
             
             // Result Message
-            Text(
-              _getStatusLabel(dotState, state.scanType),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: color,
+            if (state.scanType != ScanType.phoneNumber || dotState == DotState.safe)
+              Text(
+                _getStatusLabel(dotState, state.scanType),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
-            ),
+            
+            // Spacing adjustment if title is hidden
+            if (state.scanType == ScanType.phoneNumber && dotState != DotState.safe)
+               const SizedBox(height: 10),
 
             const SizedBox(height: 12),
             Text(
@@ -378,7 +383,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ),
             
-            if (state.score != null && state.score! >= 0) ...[
+            if (state.score != null && state.score! >= 0 && state.scanType != ScanType.phoneNumber) ...[
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -406,31 +411,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               child: ElevatedButton(
                 onPressed: _onReset,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
+                  backgroundColor: const Color(0xFF4A80FF),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: const Text(
-                  '목록으로 돌아가기',
+                  '다시 분석하기',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                ref.read(scanProvider.notifier).reset();
-              },
-              child: const Text(
-                '다시 분석하기',
-                style: TextStyle(
-                  color: Colors.black45,
-                  fontSize: 16,
                 ),
               ),
             ),
