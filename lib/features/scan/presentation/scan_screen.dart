@@ -78,7 +78,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary, // White
+                  color: Colors.white, // Explicit White
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(

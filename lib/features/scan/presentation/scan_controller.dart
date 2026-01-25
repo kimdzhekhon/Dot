@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dot/features/scan/presentation/dot_animation.dart';
+import 'package:dot/features/scan/domain/scan_text_usecase.dart';
+import 'package:dot/features/scan/presentation/scan_providers.dart';
 
 // Simple state holder for now. Will eventually include Entity/Model.
 class ScanState {
@@ -22,32 +24,42 @@ class ScanState {
   }
 }
 
+
 class ScanViewModel extends StateNotifier<ScanState> {
-  ScanViewModel() : super(ScanState(dotState: DotState.idle));
+  final ScanTextUseCase _scanTextUseCase;
+
+  ScanViewModel(this._scanTextUseCase) : super(ScanState(dotState: DotState.idle));
 
   Future<void> analyzeText(String text) async {
     // 1. Idle -> Analyzing
     state = state.copyWith(dotState: DotState.analyzing);
 
-    // Mocking Delay (Vibe)
-    await Future.delayed(const Duration(seconds: 3));
+    // 2. UseCase Call
+    final result = await _scanTextUseCase(text);
 
-    // Mocking Result (Random -> Deterministic for now)
-    final score = 88; // Hardcoded for Vibe Check
-    final isSafe = score < 50;
-
-    state = state.copyWith(
-      dotState: isSafe ? DotState.safe : DotState.dangerous,
-      score: score,
-      message: isSafe ? "This looks Safe." : "This score is ominous.",
+    result.fold(
+      (failure) {
+        state = state.copyWith(
+          dotState: DotState.warning, 
+          message: failure.message,
+          score: -1, // Error indicator
+        );
+      },
+      (success) {
+        state = state.copyWith(
+          dotState: success.isSafe ? DotState.safe : DotState.dangerous,
+          score: success.score,
+          message: success.message,
+        );
+      },
     );
   }
 
   void reset() {
-    state = ScanState(dotState: DotState.idle);
+    state = ScanState(dotState: DotState.idle, score: null, message: null);
   }
 }
 
 final scanProvider = StateNotifierProvider<ScanViewModel, ScanState>((ref) {
-  return ScanViewModel();
+  return ScanViewModel(ref.read(scanTextUseCaseProvider));
 });

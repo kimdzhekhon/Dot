@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Colors (Vibe Coding Palette)
-  static const Color background = Color(0xFF000000);
-  static const Color surface = Color(0xFF121212);
-  static const Color primary = Color(0xFFFFFFFF); // The Dot
+  // Colors (Vibe Coding Palette - Light Mode)
+  static const Color background = Color(0xFFFFFFFF); // White
+  static const Color surface = Color(0xFFF2F2F7);
+  static const Color primary = Color(0xFF000000); // The Dot (Black)
   static const Color dangerous = Color(0xFFFF3B30); // Red
   static const Color safe = Color(0xFF34C759); // Green
   static const Color warning = Color(0xFFFF9500); // Orange
   static const Color analyzing = Color(0xFF0A84FF); // Blue
 
-  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textPrimary = Color(0xFF000000);
   static const Color textSecondary = Color(0xFF8E8E93);
 
   // Text Styles
@@ -43,10 +43,10 @@ class AppTheme {
 
   static ThemeData get darkTheme {
     return ThemeData(
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       scaffoldBackgroundColor: background,
       primaryColor: primary,
-      colorScheme: const ColorScheme.dark(
+      colorScheme: const ColorScheme.light(
         primary: primary,
         secondary: analyzing,
         surface: surface,
