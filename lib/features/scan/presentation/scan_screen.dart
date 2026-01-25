@@ -20,23 +20,27 @@ class ScanScreen extends ConsumerStatefulWidget {
 
 class _ScanScreenState extends ConsumerState<ScanScreen> {
   final TextEditingController _textController = TextEditingController();
+  final FocusNode _phoneFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _textController.addListener(_onTextChanged);
+    // Request focus if it's already phoneNumber mode (though it usually starts at null)
   }
 
   void _onTextChanged() {
-    setState(() {}); // Rebuild for button activation
+    setState(() {}); // Rebuild for button activation and segmented display
   }
 
   @override
   void dispose() {
     _textController.removeListener(_onTextChanged);
     _textController.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
   }
+
 
 
   void _onSubmit() {
@@ -241,81 +245,92 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         elevation: 0,
         titleSpacing: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // Input Field
-            Container(
-              height: 200, // Larger input area
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+      body: state.scanType == ScanType.phoneNumber
+          ? Stack(
+              children: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildSegmentedPhoneInput(state),
                   ),
+                ),
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: _buildAnalyzeButton(state),
+                ),
+              ],
+            )
+          : Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  // Other types (Message, Address) - Keep Box Style
+                  Container(
+                    height: 200,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _textController,
+                      maxLines: null,
+                      expands: true,
+                      style: const TextStyle(fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: _getHintText(state.scanType ?? ScanType.message),
+                        hintStyle: const TextStyle(color: Colors.black38),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildAnalyzeButton(state),
+                  const SizedBox(height: 20),
                 ],
               ),
-              child: TextField(
-                controller: _textController,
-                maxLines: state.scanType == ScanType.phoneNumber ? 1 : null,
-                expands: state.scanType != ScanType.phoneNumber,
-                style: const TextStyle(fontSize: 16),
-                keyboardType: state.scanType == ScanType.phoneNumber 
-                    ? TextInputType.phone 
-                    : TextInputType.multiline,
-                inputFormatters: state.scanType == ScanType.phoneNumber 
-                    ? [PhoneNumberFormatter()] 
-                    : [],
-                decoration: InputDecoration(
-                  hintText: _getHintText(state.scanType ?? ScanType.message),
-                  hintStyle: const TextStyle(color: Colors.black38),
-                  border: InputBorder.none,
-                ),
-              ),
-
             ),
-            
-            const Spacer(),
+    );
+  }
 
-            // Analyze Button
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: PhoneNumberFormatter.isValid(
-                  _textController.text, 
-                  state.scanType == ScanType.phoneNumber
-                ) ? _onSubmit : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.analyzing,
-                  disabledBackgroundColor: Colors.black12,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  state.scanType == ScanType.phoneNumber ? '검색하기' : '분석하기',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20), // Bottom padding
-          ],
+  Widget _buildAnalyzeButton(ScanState state) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: PhoneNumberFormatter.isValid(
+          _textController.text, 
+          state.scanType == ScanType.phoneNumber
+        ) ? _onSubmit : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.analyzing,
+          disabledBackgroundColor: Colors.black12,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 0,
+        ),
+        child: Text(
+          state.scanType == ScanType.phoneNumber ? '검색하기' : '분석하기',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
   }
+
 
   Widget _buildResultLayout(BuildContext context, ScanState state) {
     final dotState = state.dotState;
@@ -471,4 +486,131 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         return '의심되는 웹사이트 주소를 입력하세요...'; // Updated Hint
     }
   }
+
+  Widget _buildSegmentedPhoneInput(ScanState state) {
+    final text = _textController.text;
+    final clean = text.replaceAll('-', '');
+    
+    String p1 = '';
+    String p2 = '';
+    String p3 = '';
+
+    if (clean.isNotEmpty) {
+      if (clean.startsWith('02')) {
+        // Seoul 02-XXX-XXXX or 02-XXXX-XXXX
+        p1 = clean.substring(0, clean.length < 2 ? clean.length : 2);
+        if (clean.length > 2) {
+          int mid = clean.length <= 9 ? 5 : 6;
+          p2 = clean.substring(2, clean.length < mid ? clean.length : mid);
+          if (clean.length > mid) {
+            p3 = clean.substring(mid);
+          }
+        }
+      } else {
+        // Standard 000-0000-0000 (3-4-4)
+        p1 = clean.substring(0, clean.length < 3 ? clean.length : 3);
+        if (clean.length > 3) {
+          // Changed mid to handle 3-4-4 correctly
+          int mid = clean.length <= 6 ? clean.length : 7; 
+          p2 = clean.substring(3, clean.length < 7 ? clean.length : 7);
+          if (clean.length > 7) {
+            p3 = clean.substring(7);
+          }
+        }
+      }
+    }
+
+    return Container(
+      height: 100, // Adjusted height
+      width: double.infinity,
+      color: Colors.transparent,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Display UI (Back)
+          IgnorePointer(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center, // Ensure center alignment
+              children: [
+                _buildUnderlineBox(p1, clean.startsWith('02') ? 2 : 3),
+                _buildSeparator(),
+                _buildUnderlineBox(p2, clean.startsWith('02') ? (clean.length <= 9 ? 3 : 4) : 4), 
+                _buildSeparator(),
+                _buildUnderlineBox(p3, 4),
+              ],
+            ),
+          ),
+
+          // Hidden TextField (Front)
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0,
+              child: TextField(
+                controller: _textController,
+                focusNode: _phoneFocusNode,
+                keyboardType: TextInputType.number,
+                inputFormatters: [PhoneNumberFormatter()],
+                autofocus: true,
+                style: const TextStyle(fontSize: 1),
+                decoration: const InputDecoration(border: InputBorder.none),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildUnderlineBox(String value, int maxLength) {
+    return Container(
+      width: maxLength == 2 ? 60 : (maxLength == 3 ? 80 : 100),
+      height: 60,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: value.length == maxLength ? AppTheme.analyzing : Colors.black12,
+            width: 2,
+          ),
+        ),
+      ),
+      child: Center(
+        child: Text(
+          value.isEmpty ? '0' * maxLength : value,
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: value.isEmpty ? Colors.black12 : Colors.black87,
+            letterSpacing: 2,
+            height: 1.0, // Force line height to 1.0 for better centering
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeparator() {
+    return const SizedBox(
+      height: 60,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            '-',
+            style: TextStyle(
+              fontSize: 24, 
+              color: Colors.black26, 
+              fontWeight: FontWeight.bold,
+              height: 1.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 }
+
