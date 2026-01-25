@@ -19,11 +19,15 @@ class ScanRepositoryImpl implements ScanRepository {
         url = text;
       }
 
-      // 2. Parallel API Calls (Google & VT) - Skipped if URL is null, or adapted
-      // For Vibe Coding, we just fire them.
-      // In prod, await Future.wait([...])
-      final googleResult = await _dataSource.searchGoogle(text);
-      final vtResult = url != null ? await _dataSource.scanUrlVt(url) : <String, dynamic>{};
+      // 2. Parallel API Calls (Google & VT)
+      // Google Safe Browsing only works on URLs
+      final googleResult = url != null 
+          ? await _dataSource.checkGoogleSafeBrowsing(url) 
+          : <String, dynamic>{};
+      
+      final vtResult = url != null 
+          ? await _dataSource.scanUrlVt(url) 
+          : <String, dynamic>{};
 
       // 3. RPC Call
       final score = await _dataSource.calculateDotScore(
@@ -36,8 +40,8 @@ class ScanRepositoryImpl implements ScanRepository {
       // 4. Map to Entity
       final isSafe = score < 50;
       final message = isSafe 
-          ? "Dot remains calm. It's safe." 
-          : "Dot pulses violently. Threat detected ($score%).";
+          ? "안전해보입니다." 
+          : "위협이 감지되었습니다 ($score점).";
 
       return Right(ScanResult(
         score: score,

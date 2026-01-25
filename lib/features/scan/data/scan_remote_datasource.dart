@@ -24,29 +24,33 @@ class ScanRemoteDataSource {
     }
   }
 
-  /// 2. Google Custom Search API
-  Future<Map<String, dynamic>> searchGoogle(String query) async {
+  /// 2. Google Safe Browsing API (v4)
+  Future<Map<String, dynamic>> checkGoogleSafeBrowsing(String url) async {
     if (GlobalConfig.googleKey == null) await fetchSecureKeys();
 
     try {
-      // Mocking for now if key is invalid, or strictly use key
-      // URL: https://www.googleapis.com/customsearch/v1?key=...&cx=...&q=...
-      // For Vibe Coding, we might mock this if we don't have a real CX/Key yet.
-      // But adhering to the task, providing the structure.
-      /*
-      final response = await _dioClient.get(
-        'https://www.googleapis.com/customsearch/v1',
-        queryParameters: {
-          'key': GlobalConfig.googleKey,
-          'cx': 'YOUR_CX_ID', // TODO: user needs to provide CX
-          'q': query,
+      final response = await _dioClient.post(
+        'https://safebrowsing.googleapis.com/v4/threatMatches:find',
+        queryParameters: {'key': GlobalConfig.googleKey},
+        data: {
+          "client": {
+            "clientId": "dot-app", 
+            "clientVersion": "1.0.0"
+          },
+          "threatInfo": {
+            "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
+            "platformTypes": ["ANY_PLATFORM"],
+            "threatEntryTypes": ["URL"],
+            "threatEntries": [
+              {"url": url}
+            ]
+          }
         },
       );
-      return response.data;
-      */
-      return {'mock_google': 'safe'}; 
+      // If empty object returned, it means safe.
+      return response.data ?? {}; 
     } catch (e) {
-      // Fail silently or throw
+      // Fail silently for Vibe (or log)
       return {};
     }
   }

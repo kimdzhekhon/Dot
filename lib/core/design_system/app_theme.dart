@@ -8,7 +8,7 @@ class AppTheme {
   static const Color dangerous = Color(0xFFFF3B30); // Red
   static const Color safe = Color(0xFF34C759); // Green
   static const Color warning = Color(0xFFFF9500); // Orange
-  static const Color analyzing = Color(0xFF0A84FF); // Blue
+  static const Color analyzing = Color(0xFF4A80FF); // Blue (User defined)
 
   static const Color textPrimary = Color(0xFF000000);
   static const Color textSecondary = Color(0xFF8E8E93);
