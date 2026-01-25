@@ -70,12 +70,22 @@ class ScanViewModel extends StateNotifier<ScanState> {
         );
       },
       (success) {
+        DotState dotState;
+        if (success.score >= 80) {
+          dotState = DotState.dangerous;
+        } else if (success.score >= 40) {
+          dotState = DotState.warning;
+        } else {
+          dotState = DotState.safe;
+        }
+
         state = state.copyWith(
-          dotState: success.isSafe ? DotState.safe : DotState.dangerous,
+          dotState: dotState,
           score: success.score,
           message: success.message,
         );
       },
+
     );
   }
 

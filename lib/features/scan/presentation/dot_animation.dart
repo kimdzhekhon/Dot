@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:dot/core/design_system/app_theme.dart';
+import 'package:lottie/lottie.dart';
 
 enum DotState {
   idle,
@@ -67,6 +68,37 @@ class _DotAnimationState extends State<DotAnimation> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final color = _getColorForState(widget.state);
+    
+    // Result States use Lottie
+    if (widget.state == DotState.safe) {
+      return Lottie.asset(
+        'assets/animation/Success Check.json',
+        width: widget.size,
+        height: widget.size,
+        repeat: false,
+      );
+    }
+    
+    if (widget.state == DotState.warning) {
+      return Lottie.asset(
+        'assets/animation/Alert.json',
+        width: widget.size,
+        height: widget.size,
+        repeat: false,
+      );
+    }
+
+    if (widget.state == DotState.dangerous) {
+      return Lottie.asset(
+        'assets/animation/Failed.json',
+        width: widget.size,
+        height: widget.size,
+        repeat: false,
+      );
+    }
+
+
+    // Analyzing or Idle uses the custom dot animation
     final isAnalyzing = widget.state == DotState.analyzing;
 
     return SizedBox(
@@ -75,7 +107,7 @@ class _DotAnimationState extends State<DotAnimation> with TickerProviderStateMix
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Pulse Effect (Always active but subtle in idle)
+          // Pulse Effect
           AnimatedBuilder(
             animation: _pulseController,
             builder: (context, child) {
@@ -139,3 +171,4 @@ class _DotAnimationState extends State<DotAnimation> with TickerProviderStateMix
     );
   }
 }
+

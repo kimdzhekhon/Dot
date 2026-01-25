@@ -35,11 +35,12 @@ class ScanRepositoryImpl implements ScanRepository {
 
         } else {
           return Right(const ScanResult(
-            score: 0,
-            isSafe: true, // It's "safe" in the sense it's not detected as a threat here, but just not found in clean list
+            score: 50, // Threshold for warning
+            isSafe: false, 
             message: "검색 결과가 없습니다.",
           ));
         }
+
       }
 
       // General Analysis Flow (Messages, URLs)
