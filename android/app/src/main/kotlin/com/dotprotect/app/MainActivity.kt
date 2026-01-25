@@ -1,4 +1,4 @@
-package com.example.dot
+package com.dotprotect.app
 
 import io.flutter.embedding.android.FlutterActivity
 

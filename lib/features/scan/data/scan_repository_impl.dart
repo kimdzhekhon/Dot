@@ -3,6 +3,8 @@ import 'package:dot/core/network/network_exception.dart';
 import 'package:dot/features/scan/data/scan_remote_datasource.dart';
 import 'package:dot/features/scan/domain/scan_repository.dart';
 import 'package:dot/features/scan/domain/scan_result.dart';
+import 'package:dot/features/scan/domain/scan_type.dart';
+
 
 class ScanRepositoryImpl implements ScanRepository {
   final ScanRemoteDataSource _dataSource;
@@ -10,8 +12,37 @@ class ScanRepositoryImpl implements ScanRepository {
   ScanRepositoryImpl(this._dataSource);
 
   @override
-  Future<Either<NetworkException, ScanResult>> scanText(String text) async {
+  Future<Either<NetworkException, ScanResult>> scanText(String text, ScanType type) async {
     try {
+      if (type == ScanType.phoneNumber) {
+        // Phone Search Flow
+        final cleanResult = await _dataSource.searchCleanPhone(text);
+        if (cleanResult['found'] == true) {
+          final orgName = cleanResult['org_name'] as String;
+          final deptName = cleanResult['dept_name'] as String?;
+          final deptLabel = (deptName != null && deptName.isNotEmpty) ? " ($deptName)" : "";
+          final phone = cleanResult['phone_number'];
+          final fax = cleanResult['fax_number'] ?? '-';
+          final address = cleanResult['address'] ?? '-';
+
+          return Right(ScanResult(
+            score: 0,
+            isSafe: true,
+            message: "$orgName$deptLabel\n전화: $phone\n팩스: $fax\n주소: $address",
+            details: cleanResult,
+          ));
+
+
+        } else {
+          return Right(const ScanResult(
+            score: 0,
+            isSafe: true, // It's "safe" in the sense it's not detected as a threat here, but just not found in clean list
+            message: "검색 결과가 없습니다.",
+          ));
+        }
+      }
+
+      // General Analysis Flow (Messages, URLs)
       // 1. Identify URL
       String? url;
       final uri = Uri.tryParse(text);
@@ -20,7 +51,6 @@ class ScanRepositoryImpl implements ScanRepository {
       }
 
       // 2. Parallel API Calls (Google & VT)
-      // Google Safe Browsing only works on URLs
       final googleResult = url != null 
           ? await _dataSource.checkGoogleSafeBrowsing(url) 
           : <String, dynamic>{};
@@ -56,3 +86,4 @@ class ScanRepositoryImpl implements ScanRepository {
     }
   }
 }
+

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'dart:io' show Platform;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/network/dio_client.dart';
 import 'package:dot/core/network/network_exception.dart';
@@ -16,7 +17,8 @@ class ScanRemoteDataSource {
       final response = await _supabaseClient.functions.invoke('get-secure-keys');
       final data = response.data;
       if (data != null) {
-        GlobalConfig.googleKey = data['google'];
+        GlobalConfig.googleKeyAndroid = data['google_android'];
+        GlobalConfig.googleKeyIos = data['google_ios'];
         GlobalConfig.vtKey = data['virustotal'];
       }
     } catch (e) {
@@ -26,12 +28,30 @@ class ScanRemoteDataSource {
 
   /// 2. Google Safe Browsing API (v4)
   Future<Map<String, dynamic>> checkGoogleSafeBrowsing(String url) async {
-    if (GlobalConfig.googleKey == null) await fetchSecureKeys();
+    // Select Key based on Platform
+    String? googleKey;
+    if (Platform.isAndroid) {
+       googleKey = GlobalConfig.googleKeyAndroid;
+    } else if (Platform.isIOS) {
+       googleKey = GlobalConfig.googleKeyIos;
+    }
+    
+    // If key missing for current platform, try fetch
+    if (googleKey == null) {
+       await fetchSecureKeys();
+       if (Platform.isAndroid) {
+          googleKey = GlobalConfig.googleKeyAndroid;
+       } else if (Platform.isIOS) {
+          googleKey = GlobalConfig.googleKeyIos;
+       }
+    }
+
+    if (googleKey == null) return {}; // Still missing?
 
     try {
       final response = await _dioClient.post(
         'https://safebrowsing.googleapis.com/v4/threatMatches:find',
-        queryParameters: {'key': GlobalConfig.googleKey},
+        queryParameters: {'key': googleKey},
         data: {
           "client": {
             "clientId": "dot-app", 
@@ -88,4 +108,18 @@ class ScanRemoteDataSource {
       throw NetworkException(message: "Score calculation failed: $e");
     }
   }
+
+  /// 5. Search Clean Phone (RPC)
+  Future<Map<String, dynamic>> searchCleanPhone(String phoneNumber) async {
+    try {
+      final response = await _supabaseClient.rpc('search_clean_phone', params: {
+        'p_phone_number': phoneNumber,
+      });
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      throw NetworkException(message: "Phone search failed: $e");
+    }
+  }
 }
+
+
