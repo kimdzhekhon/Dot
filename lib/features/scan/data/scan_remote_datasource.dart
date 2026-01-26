@@ -124,6 +124,19 @@ class ScanRemoteDataSource {
       throw NetworkException(message: "Phone search failed: $e");
     }
   }
+
+  /// 6. Check Web List (RPC)
+  Future<Map<String, dynamic>> checkWebList(String url) async {
+    try {
+      final response = await _supabaseClient.rpc('check_web_list', params: {
+        'p_url': url,
+      });
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      // Return empty/not-found to allow fallback to other scanner APIs
+      return {'found': false, 'status': 'none'};
+    }
+  }
 }
 
 

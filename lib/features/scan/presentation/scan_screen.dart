@@ -221,13 +221,15 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         elevation: 0,
         titleSpacing: 0,
       ),
-      body: state.scanType == ScanType.phoneNumber
+      body: (state.scanType == ScanType.phoneNumber || state.scanType == ScanType.address)
           ? Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Column(
                 children: [
                   const Spacer(flex: 1),
-                  _buildPhoneInput(state),
+                  state.scanType == ScanType.phoneNumber 
+                    ? _buildPhoneInput(state)
+                    : _buildAddressInput(state),
                   const Spacer(flex: 3),
                   _buildAnalyzeButton(state),
                 ],
@@ -278,10 +280,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: PhoneNumberFormatter.isValid(
-          _textController.text, 
-          state.scanType == ScanType.phoneNumber
-        ) ? _onSubmit : null,
+        onPressed: (state.scanType == ScanType.phoneNumber)
+          ? (PhoneNumberFormatter.isValid(_textController.text, true) ? _onSubmit : null)
+          : (_textController.text.isNotEmpty ? _onSubmit : null),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.analyzing,
           disabledBackgroundColor: Colors.black12,
@@ -291,7 +292,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           elevation: 0,
         ),
         child: Text(
-          state.scanType == ScanType.phoneNumber ? '검색하기' : '분석하기',
+          (state.scanType == ScanType.phoneNumber || state.scanType == ScanType.address) ? '검색하기' : '분석하기',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -481,8 +482,60 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       case ScanType.message:
         return '의심되는 문자 메시지 내용이나\nURL을 여기에 붙여넣으세요...';
       case ScanType.address:
-        return '의심되는 웹사이트 주소를 입력하세요...'; // Updated Hint
+        return '웹사이트 주소를 입력해 주세요'; // Updated Hint
     }
+  }
+
+  Widget _buildAddressInput(ScanState state) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '웹사이트 주소 입력',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.black12,
+                width: 2,
+              ),
+            ),
+          ),
+          child: TextField(
+            controller: _textController,
+            focusNode: _phoneFocusNode,
+            keyboardType: TextInputType.url,
+            autofocus: true,
+            textAlign: TextAlign.left,
+            style: const TextStyle(
+              fontSize: 24, // Slightly smaller than phone number for long URLs
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            decoration: InputDecoration(
+              hintText: '웹사이트 주소를 입력해 주세요',
+              hintStyle: TextStyle(
+                color: Colors.black12,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildPhoneInput(ScanState state) {
