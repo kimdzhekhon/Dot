@@ -7,6 +7,7 @@ import 'package:dot/features/scan/presentation/dot_animation.dart';
 import 'package:dot/features/scan/presentation/scan_controller.dart';
 import 'package:dot/features/scan/domain/scan_type.dart';
 import 'package:dot/features/scan/presentation/phone_number_formatter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 
@@ -245,21 +246,16 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         titleSpacing: 0,
       ),
       body: state.scanType == ScanType.phoneNumber
-          ? Stack(
-              children: [
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildPhoneInput(state),
-                  ),
-                ),
-                Positioned(
-                  bottom: 20,
-                  left: 20,
-                  right: 20,
-                  child: _buildAnalyzeButton(state),
-                ),
-              ],
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Column(
+                children: [
+                  const Spacer(flex: 1),
+                  _buildPhoneInput(state),
+                  const Spacer(flex: 3),
+                  _buildAnalyzeButton(state),
+                ],
+              ),
             )
           : Padding(
               padding: const EdgeInsets.all(20.0),
@@ -382,6 +378,40 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 height: 1.4,
               ),
             ),
+
+            if (state.scanType == ScanType.phoneNumber) ...[
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () async {
+                  final url = Uri.parse('https://www.police.go.kr/www/security/cyber/cyber04.jsp#');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.analyzing.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.search, size: 16, color: AppTheme.analyzing),
+                      const SizedBox(width: 8),
+                      Text(
+                        '인터넷 사기 의심 전화·계좌번호 조회',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.analyzing,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             
             if (state.score != null && state.score! >= 0 && state.scanType != ScanType.phoneNumber) ...[
               const SizedBox(height: 24),
