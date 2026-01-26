@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dot/core/design_system/app_responsive_layout.dart';
 import 'package:dot/core/design_system/app_theme.dart';
@@ -46,7 +47,22 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   void _onSubmit() {
     final text = _textController.text;
+    final scanType = ref.read(scanProvider).scanType;
+
     if (text.isNotEmpty) {
+      // Validation for Address Scan
+      if (scanType == ScanType.address && !text.contains('.')) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(
+             content: Text('올바른 도메인 형식이 아닙니다'),
+             backgroundColor: Colors.black87,
+             behavior: SnackBarBehavior.floating,
+             duration: Duration(seconds: 2),
+           )
+         );
+         return;
+      }
+
       ref.read(scanProvider.notifier).analyzeText(text);
       // _textController.clear(); // Keep text for re-analysis
       FocusScope.of(context).unfocus();
@@ -345,17 +361,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             if (state.scanType == ScanType.phoneNumber && dotState != DotState.safe)
                const SizedBox(height: 10),
 
-            const SizedBox(height: 12),
-            Text(
-              state.message ?? '',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-            ),
+            // Hide description message for address scan if it's just repeating the title
+            if (state.scanType != ScanType.address) ...[
+               const SizedBox(height: 12),
+               Text(
+                 state.message ?? '',
+                 textAlign: TextAlign.center,
+                 style: const TextStyle(
+                   fontSize: 20,
+                   color: Colors.black87,
+                   fontWeight: FontWeight.w500,
+                   height: 1.4,
+                 ),
+               ),
+            ],
 
             if (state.scanType == ScanType.phoneNumber) ...[
               const SizedBox(height: 16),
@@ -395,6 +414,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               const SizedBox(height: 24),
               Column(
                 children: [
+                   // Only show score if NOT address type
+                   if (state.scanType != ScanType.address)
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     decoration: BoxDecoration(
@@ -410,6 +431,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                       ),
                     ),
                   ),
+
+                  // Disclaimer for Web Scan (or potentially others)
+                  if (state.scanType == ScanType.address)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        '분석 결과는 참고용으로만 사용해 주세요.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.black45,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   if (state.scanType == ScanType.address && state.details?['webList']?['found'] == true) ...[
                     const SizedBox(height: 16),
                     Text(
@@ -583,6 +618,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             controller: _textController,
             focusNode: _phoneFocusNode,
             keyboardType: TextInputType.url,
+            inputFormatters: [
+               FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\.-]')),
+            ],
             autofocus: true,
             textAlign: TextAlign.left,
             style: const TextStyle(

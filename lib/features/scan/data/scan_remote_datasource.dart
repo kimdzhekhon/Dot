@@ -14,18 +14,15 @@ class ScanRemoteDataSource {
 
   /// 1. Fetch Keys from Edge Function
   Future<void> fetchSecureKeys() async {
-    print('[ScanRemoteDataSource] Requesting secure keys...');
     try {
       final response = await _supabaseClient.functions.invoke('get-secure-keys');
       final data = response.data;
-      print('[ScanRemoteDataSource] fetchSecureKeys success: $data');
       if (data != null) {
         GlobalConfig.googleKeyAndroid = data['google_android'];
         GlobalConfig.googleKeyIos = data['google_ios'];
         GlobalConfig.whoisKey = data['whois_key'];
       }
     } catch (e) {
-      print('[ScanRemoteDataSource] fetchSecureKeys failed: $e');
       throw NetworkException(message: "Failed to fetch secure keys: $e");
     }
   }
@@ -53,6 +50,7 @@ class ScanRemoteDataSource {
     if (googleKey == null) return {}; // Still missing?
 
     try {
+      print('[ScanRemoteDataSource] Checking Google Safe Browsing for: $url');
       final response = await _dioClient.post(
         'https://safebrowsing.googleapis.com/v4/threatMatches:find',
         queryParameters: {'key': googleKey},
@@ -71,7 +69,10 @@ class ScanRemoteDataSource {
           }
         },
       );
-      print('[ScanRemoteDataSource] Google SB Response: ${response.data}');
+      
+      print('[ScanRemoteDataSource] Google SB Response Status: ${response.statusCode}');
+      print('[ScanRemoteDataSource] Google SB Raw Data: ${response.data}');
+
       // If empty object returned, it means safe.
       return response.data ?? {}; 
     } catch (e) {
@@ -139,27 +140,32 @@ class ScanRemoteDataSource {
 
     if (whoisKey == null) return {};
 
-    print('[ScanRemoteDataSource] Using WHOIS Key: ${whoisKey.substring(0, min(5, whoisKey.length))}...');
+    if (whoisKey == null) return {};
 
     try {
       // 2. Extract Domain 
       final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
       final host = uri.host;
+
+      // KISA Public Data Portal API only supports .kr / .한국 domains
+      // Skip API call for .com, .net, etc. to avoid 031 error
+      if (!host.endsWith('.kr') && !host.endsWith('.한국')) {
+        print('[ScanRemoteDataSource] Skipping WHOIS for non-KR domain: $host');
+        return {};
+      }
       
-      // 3. Call KISA WHOIS API
-      final response = await _dioClient.get(
-        'http://whois.kisa.or.kr/openapi/whois.jsp',
-        queryParameters: {
-          'query': host,
-          'serviceKey': whoisKey, // User's doc says serviceKey, not key
-          'answer': 'json',
-        },
-      );
+      // 3. Call KISA WHOIS API (via Public Data Portal)
+      // User has a Public Data Portal key, so we must use the data.go.kr endpoint
+      // Endpoint: https://apis.data.go.kr/B551505/whois/domain_name
+      final requestUrl = 'https://apis.data.go.kr/B551505/whois/domain_name?serviceKey=$whoisKey&query=$host&answer=json';
+      
+      print('[ScanRemoteDataSource] Requesting WHOIS: $requestUrl');
+
+      final response = await _dioClient.get(requestUrl);
       
       var responseData = response.data;
-      print('[ScanRemoteDataSource] WHOIS Raw Response Type: ${responseData.runtimeType}');
       print('[ScanRemoteDataSource] WHOIS Raw Response: $responseData');
-
+      
       if (responseData is String) {
         try {
           responseData = jsonDecode(responseData);
@@ -171,7 +177,12 @@ class ScanRemoteDataSource {
 
       if (responseData is Map<String, dynamic> && responseData['whois'] != null) {
          final whoisData = responseData['whois'];
-         print('[ScanRemoteDataSource] WHOIS Final Data: $whoisData');
+         
+         // Check for API error (e.g., 031 for .com domains)
+         if (whoisData['error'] != null) {
+            print('[ScanRemoteDataSource] WHOIS API Error: ${whoisData['error']}');
+            return {};
+         }
          return whoisData;
       }
       return {};
