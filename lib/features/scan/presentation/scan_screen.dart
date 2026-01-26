@@ -428,10 +428,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                     ),
                   ),
 
-                  ),
-                ],
-              ),
-            ],
+                  if (state.scanType == ScanType.address && state.details?['webList']?['found'] == true) ...[
                     const SizedBox(height: 16),
                     Text(
                       '등록 주체: ${state.details!['webList']['reg_subject'] ?? '정보 없음'}',

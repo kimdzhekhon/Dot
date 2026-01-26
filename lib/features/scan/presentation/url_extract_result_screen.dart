@@ -114,6 +114,17 @@ class UrlExtractResultScreen extends ConsumerWidget {
                         ),
                 ),
                 const SizedBox(height: 24),
+                const Center(
+                  child: Text(
+                    '분석 결과는 참고용으로만 사용해 주세요.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black45,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 AppButton(
                   text: '위험도 분석하기',
                   onPressed: () {

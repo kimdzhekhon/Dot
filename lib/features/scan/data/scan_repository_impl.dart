@@ -101,9 +101,6 @@ class ScanRepositoryImpl implements ScanRepository {
 
           if (webListResult['found'] == true) {
             final isWhitelisted = webListResult['status'] == 'whitelisted';
-            final regSubject = webListResult['reg_subject'] ?? '정보 없음';
-            final regDate = webListResult['reg_date'] ?? '정보 없음';
-
             if (isWhitelisted) {
               return Right(ScanResult(
                 score: 0,

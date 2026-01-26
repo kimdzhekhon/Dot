@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'dart:io' show Platform;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/network/dio_client.dart';
@@ -50,7 +49,6 @@ class ScanRemoteDataSource {
     if (googleKey == null) return {}; // Still missing?
 
     try {
-      print('[ScanRemoteDataSource] Checking Google Safe Browsing for: $url');
       final response = await _dioClient.post(
         'https://safebrowsing.googleapis.com/v4/threatMatches:find',
         queryParameters: {'key': googleKey},
@@ -70,13 +68,9 @@ class ScanRemoteDataSource {
         },
       );
       
-      print('[ScanRemoteDataSource] Google SB Response Status: ${response.statusCode}');
-      print('[ScanRemoteDataSource] Google SB Raw Data: ${response.data}');
-
       // If empty object returned, it means safe.
       return response.data ?? {}; 
     } catch (e) {
-      print('[ScanRemoteDataSource] Google SB Error: $e');
       // Fail silently for Vibe (or log)
       return {};
     }
@@ -140,8 +134,6 @@ class ScanRemoteDataSource {
 
     if (whoisKey == null) return {};
 
-    if (whoisKey == null) return {};
-
     try {
       // 2. Extract Domain 
       final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
@@ -150,7 +142,6 @@ class ScanRemoteDataSource {
       // KISA Public Data Portal API only supports .kr / .한국 domains
       // Skip API call for .com, .net, etc. to avoid 031 error
       if (!host.endsWith('.kr') && !host.endsWith('.한국')) {
-        print('[ScanRemoteDataSource] Skipping WHOIS for non-KR domain: $host');
         return {};
       }
       
@@ -159,19 +150,14 @@ class ScanRemoteDataSource {
       // Endpoint: https://apis.data.go.kr/B551505/whois/domain_name
       final requestUrl = 'https://apis.data.go.kr/B551505/whois/domain_name?serviceKey=$whoisKey&query=$host&answer=json';
       
-      print('[ScanRemoteDataSource] Requesting WHOIS: $requestUrl');
-
       final response = await _dioClient.get(requestUrl);
-      
       var responseData = response.data;
-      print('[ScanRemoteDataSource] WHOIS Raw Response: $responseData');
-      
+
       if (responseData is String) {
         try {
           responseData = jsonDecode(responseData);
-          print('[ScanRemoteDataSource] WHOIS Parsed from String: $responseData');
         } catch (e) {
-          print('[ScanRemoteDataSource] JSON Decode Error: $e');
+          // Ignore
         }
       }
 
@@ -180,17 +166,13 @@ class ScanRemoteDataSource {
          
          // Check for API error (e.g., 031 for .com domains)
          if (whoisData['error'] != null) {
-            print('[ScanRemoteDataSource] WHOIS API Error: ${whoisData['error']}');
             return {};
          }
          return whoisData;
       }
       return {};
     } catch (e) {
-      print('[ScanRemoteDataSource] WHOIS Error: $e');
       return {};
     }
   }
 }
-
-
