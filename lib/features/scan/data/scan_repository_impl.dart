@@ -51,16 +51,45 @@ class ScanRepositoryImpl implements ScanRepository {
         url = text;
       }
 
-      // 2. Parallel API Calls (Google & VT)
-      final googleResult = url != null 
-          ? await _dataSource.checkGoogleSafeBrowsing(url) 
-          : <String, dynamic>{};
-      
-      final vtResult = url != null 
-          ? await _dataSource.scanUrlVt(url) 
-          : <String, dynamic>{};
+      // 2. Parallel API Calls (Google & VT) & RPC check for URLs
+      Map<String, dynamic> googleResult = {};
+      Map<String, dynamic> vtResult = {};
+      Map<String, dynamic> webListResult = {'found': false};
 
-      // 3. RPC Call
+      if (url != null) {
+        if (type == ScanType.address) {
+          webListResult = await _dataSource.checkWebList(url);
+          
+          if (webListResult['found'] == true) {
+            final isWhitelisted = webListResult['status'] == 'whitelisted';
+            if (isWhitelisted) {
+              return Right(ScanResult(
+                score: 0,
+                isSafe: true,
+                message: "${webListResult['site_name']}\n공식 인증된 안전한 사이트입니다.",
+                details: webListResult,
+              ));
+            } else if (webListResult['status'] == 'blacklisted') {
+              return Right(ScanResult(
+                score: 100,
+                isSafe: false,
+                message: "블랙리스트에 등록된 위험한 사이트입니다.",
+                details: webListResult,
+              ));
+            }
+          }
+        }
+
+        // Proceed to other scans if not conclusive from RPC or if it's a message type
+        final results = await Future.wait([
+          _dataSource.checkGoogleSafeBrowsing(url),
+          _dataSource.scanUrlVt(url),
+        ]);
+        googleResult = results[0];
+        vtResult = results[1];
+      }
+
+      // 3. RPC Call for scoring (mainly for messages or unknown URLs)
       final score = await _dataSource.calculateDotScore(
         message: text,
         googleResult: googleResult,
@@ -71,14 +100,14 @@ class ScanRepositoryImpl implements ScanRepository {
       // 4. Map to Entity
       final isSafe = score < 50;
       final message = isSafe 
-          ? "안전해보입니다." 
+          ? (type == ScanType.address ? "데이터베이스에 없으나 안전해보입니다." : "안전해보입니다.") 
           : "위협이 감지되었습니다 ($score점).";
 
       return Right(ScanResult(
         score: score,
         message: message,
         isSafe: isSafe,
-        details: {'google': googleResult, 'vt': vtResult},
+        details: {'google': googleResult, 'vt': vtResult, 'webList': webListResult},
       ));
     } on NetworkException catch (e) {
       return Left(e);
