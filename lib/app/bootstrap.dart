@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/constants/global_config.dart';
@@ -7,13 +8,13 @@ final bootstrapProvider = FutureProvider<void>((ref) async {
   final supabase = Supabase.instance.client;
 
   try {
-    print('Bootstrap: Starting initialization (Memory-only flow)...');
+    debugPrint('Bootstrap: Starting initialization (Memory-only flow)...');
     // 1. Invoke auth-init Edge Function
     final response = await supabase.functions.invoke('auth-init');
-    print('Bootstrap: Function response status: ${response.status}');
+    debugPrint('Bootstrap: Function response status: ${response.status}');
     
     final data = response.data;
-    print('Bootstrap: Raw response data: $data');
+    debugPrint('Bootstrap: Raw response data: $data');
 
     if (data != null && data['status'] == 'success') {
       // 2. Extract Data
@@ -21,7 +22,7 @@ final bootstrapProvider = FutureProvider<void>((ref) async {
       final counts = data['counts'] as Map<String, dynamic>?;
 
       if (keys != null) {
-        print('Bootstrap: Keys received. Updating GlobalConfig...');
+        debugPrint('Bootstrap: Keys received. Updating GlobalConfig...');
         final googleKey = keys['google_key'];
         // Update Memory Config (GlobalConfig)
         GlobalConfig.googleKey = googleKey;
@@ -30,7 +31,7 @@ final bootstrapProvider = FutureProvider<void>((ref) async {
       }
 
       if (counts != null) {
-        print('Bootstrap: Counts received: $counts. Updating tableCountsProvider...');
+        debugPrint('Bootstrap: Counts received: $counts. Updating tableCountsProvider...');
         final parsedCounts = <String, int>{};
         counts.forEach((key, value) {
           if (value is num) {
@@ -46,10 +47,10 @@ final bootstrapProvider = FutureProvider<void>((ref) async {
         ref.read(tableCountsProvider.notifier).state = parsedCounts;
       }
     } else {
-      print('Bootstrap: Function returned error or invalid data: ${data?['error']}');
+      debugPrint('Bootstrap: Function returned error or invalid data: ${data?['error']}');
     }
   } catch (e) {
-    print('Bootstrap Error: $e');
+    debugPrint('Bootstrap Error: $e');
     // On error, the app will continue with null keys/empty counts
   }
 });

@@ -131,23 +131,19 @@ class ScanRepositoryImpl implements ScanRepository {
       // 3. Spam Message Analysis (Only for Message Type)
       Map<String, dynamic> spamResult = {};
       if (type == ScanType.message) {
-         print('🔍 [ScanRepository] Starting Spam Analysis for message...');
          try {
            spamResult = await _dataSource.analyzeSpamMessage(text);
-           print('✅ [ScanRepository] Spam Analysis Result: $spamResult');
          } catch (e) {
-           print('❌ [ScanRepository] Spam Analysis Failed: $e');
+           // Ignore failure
          }
       }
 
       // 4. RPC Call for scoring (mainly for messages or unknown URLs)
-      print('🔍 [ScanRepository] Calculating Dot Score...');
       final score = await _dataSource.calculateDotScore(
         message: text,
         googleResult: googleResult,
         url: url,
       );
-      print('✅ [ScanRepository] Dot Score Calculated: $score');
 
       // 5. Map to Entity
       // 6. Post-Score Analysis for New Domains
@@ -175,11 +171,8 @@ class ScanRepositoryImpl implements ScanRepository {
       
       // If recognized as spam by vector search, boost score significantly
       if (isSpam && finalScore < 80) {
-        print('⚠️ [ScanRepository] Boosting score due to Spam Match (Similarity: $similarity)');
         finalScore = (similarity * 100).toInt().clamp(80, 100);
       }
-
-      print('🏁 [ScanRepository] Final Score: $finalScore (Original: $score, IsSpam: $isSpam)');
 
       // Determine Status
       final isSafe = finalScore < 50 && !isNewDomain && !isSpam;

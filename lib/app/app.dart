@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dot/app/router.dart';
 import 'package:dot/app/bootstrap.dart';
 import 'package:dot/core/design_system/app_theme.dart';
-import 'package:go_router/go_router.dart';
+
 
 class DotApp extends ConsumerWidget {
   const DotApp({super.key});
