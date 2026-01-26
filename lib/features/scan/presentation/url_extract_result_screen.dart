@@ -52,15 +52,23 @@ class UrlExtractResultScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.3, // Max 30% of screen height
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
                   ),
-                  child: Text(
-                    originalText,
-                    style: const TextStyle(fontSize: 15, color: Colors.black54, height: 1.5),
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        originalText,
+                        style: const TextStyle(fontSize: 15, color: Colors.black54, height: 1.5),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
