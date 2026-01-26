@@ -67,18 +67,38 @@ class ScanRepositoryImpl implements ScanRepository {
 
       if (url != null) {
         if (type == ScanType.address) {
-          // Normalize URL: Extract host to check against domain-based web list
-          // Example: ibe.gh7w.yachts/1 -> ibe.gh7w.yachts
-          String domainToCheck = url;
-          try {
-             final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
-             if (uri.host.isNotEmpty) {
-               domainToCheck = uri.host;
-             }
-          } catch (_) {}
+          // 1. Check strict URL first (e.g. specific path in blacklist)
+          // Strip existing scheme for cleaner check if needed, but SQL handles prefixes now.
+          // We'll pass the text mostly as is, just ensuring no whitespace.
+          String cleanUrl = url.trim();
           
-          webListResult = await _dataSource.checkWebList(domainToCheck);
+          // Remove scheme for consistency in checking (since SQL adds them back)
+          // But if user typed hxxp://..., we should check that too.
+          // Let's rely on the SQL 'IN' clause which adds prefixes to the input.
+          // So if we pass 'click.gl/qVdqG6', SQL checks 'hxxp://click.gl/qVdqG6'.
+          // If we pass 'hxxp://click.gl/qVdqG6', SQL checks 'hxxp://hxxp://...' (Bad).
           
+          // Normalize: Remove Schemes from input before sending to DB check
+          String normalizedInput = cleanUrl
+              .replaceAll(RegExp(r'^(http|https|hxxp|hxxps)://', caseSensitive: false), '');
+              
+          webListResult = await _dataSource.checkWebList(normalizedInput);
+          
+          // 2. If not found, check the HOST (e.g. domain block)
+          // Case: User entered 'site.com/bad' but only 'site.com' is in blacklist.
+          if (webListResult['found'] != true) {
+             try {
+                final uri = Uri.parse(cleanUrl.startsWith('http') ? cleanUrl : 'https://$cleanUrl');
+                if (uri.host.isNotEmpty && uri.host != normalizedInput) {
+                   // Avoid checking same string twice
+                   final hostResult = await _dataSource.checkWebList(uri.host);
+                   if (hostResult['found'] == true) {
+                      webListResult = hostResult;
+                   }
+                }
+             } catch (_) {}
+          }
+
           if (webListResult['found'] == true) {
             final isWhitelisted = webListResult['status'] == 'whitelisted';
             final regSubject = webListResult['reg_subject'] ?? '정보 없음';
