@@ -19,7 +19,12 @@ BEGIN
   SELECT "사이트명", "등록 주체", "등록 날짜" 
   INTO v_site_name, v_reg_subject, v_reg_date
   FROM "Web_Whitelist" 
-  WHERE "주소" = p_url 
+  WHERE "주소" IN (
+    p_url, 
+    'http://'||p_url, 'https://'||p_url, 'hxxp://'||p_url, 'hxxps://'||p_url,
+    p_url||'/', 
+    'http://'||p_url||'/', 'https://'||p_url||'/', 'hxxp://'||p_url||'/', 'hxxps://'||p_url||'/'
+  )
   LIMIT 1;
 
   IF FOUND THEN
@@ -36,7 +41,12 @@ BEGIN
   SELECT "등록 주체", "등록 날짜"
   INTO v_reg_subject, v_reg_date
   FROM "Web_Blacklist" 
-  WHERE "홈페이지주소" = p_url
+  WHERE "홈페이지주소" IN (
+    p_url, 
+    'http://'||p_url, 'https://'||p_url, 'hxxp://'||p_url, 'hxxps://'||p_url,
+    p_url||'/', 
+    'http://'||p_url||'/', 'https://'||p_url||'/', 'hxxp://'||p_url||'/', 'hxxps://'||p_url||'/'
+  )
   LIMIT 1;
 
   IF FOUND THEN
