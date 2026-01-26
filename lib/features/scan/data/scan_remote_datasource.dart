@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/network/dio_client.dart';
 import 'package:dot/core/network/network_exception.dart';
 import 'package:dot/core/constants/global_config.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 
 class ScanRemoteDataSource {
   final DioClient _dioClient;
@@ -14,14 +15,13 @@ class ScanRemoteDataSource {
   /// 1. Fetch Keys from Edge Function
   Future<void> fetchSecureKeys() async {
     try {
-      final response = await _supabaseClient.functions.invoke('get-secure-keys');
+      final response = await _supabaseClient.functions.invoke('auth-init');
       final data = response.data;
-      if (data != null) {
-        final keys = data['keys'] as Map<String, dynamic>?;
-        if (keys != null) {
-          GlobalConfig.googleKey = keys['google_key'];
-          GlobalConfig.whoisKey = keys['whois_key'];
-        }
+      if (data != null && data['keys'] != null) {
+        final keys = data['keys'] as Map<String, dynamic>;
+        GlobalConfig.googleKey = keys['google_key'];
+        GlobalConfig.whoisKey = keys['whois_key'];
+        GlobalConfig.geminiKey = keys['gemini_key'];
       }
     } catch (e) {
       throw NetworkException(message: "Failed to fetch secure keys: $e");
@@ -166,6 +166,61 @@ class ScanRemoteDataSource {
       return {};
     } catch (e) {
       return {};
+    }
+  }
+
+  /// 7. Analyze Spam Message (Local w/ Gemini API)
+  Future<Map<String, dynamic>> analyzeSpamMessage(String text) async {
+    print('🔍 [ScanRemoteDataSource] analyzeSpamMessage started. text length: ${text.length}');
+    try {
+      // 1. Get Key
+      if (GlobalConfig.geminiKey == null) {
+         print('⚠️ [ScanRemoteDataSource] geminiKey is null. Attempting fallback or check.');
+      }
+      final apiKey = GlobalConfig.geminiKey ?? GlobalConfig.googleKey; 
+      
+      if (apiKey == null) {
+         print('❌ [ScanRemoteDataSource] API Key Missing! Cannot proceed with Gemini analysis.');
+         return {'is_spam': false, 'error': 'Missing API Key'};
+      }
+      print('✅ [ScanRemoteDataSource] API Key found. Initializing GenerativeModel...');
+
+      // 2. Generate Embedding Locally
+      final model = GenerativeModel(model: 'text-embedding-004', apiKey: apiKey);
+      final content = Content.text(text);
+      
+      print('⏳ [ScanRemoteDataSource] Calling Gemini API (embedContent)...');
+      final embeddingResult = await model.embedContent(content);
+      final embedding = embeddingResult.embedding.values;
+      print('✅ [ScanRemoteDataSource] Embedding generated. Vector dimension: ${embedding.length}');
+
+      // 3. Search via RPC (match_messages)
+      print('⏳ [ScanRemoteDataSource] Calling Supabase RPC: match_messages...');
+      final response = await _supabaseClient.rpc('match_messages', params: {
+        'query_embedding': embedding,
+        'match_threshold': 0.0, // Debugging: Lower threshold to see what matches
+        'match_count': 5, // Get top 5
+      });
+      print('✅ [ScanRemoteDataSource] RPC Response received: $response');
+
+      final List<dynamic> data = response as List<dynamic>;
+
+      if (data.isNotEmpty) {
+        final bestMatch = data[0];
+        print('🚨 [ScanRemoteDataSource] Spam Match Found! Similarity: ${bestMatch['similarity']}');
+        return {
+          'is_spam': true,
+          'similarity': bestMatch['similarity'],
+          'matched_content': bestMatch['content'],
+        };
+      }
+
+      print('✅ [ScanRemoteDataSource] No spam match found above threshold.');
+      return {'is_spam': false};
+
+    } catch (e) {
+      print('❌ [ScanRemoteDataSource] Error in analyzeSpamMessage: $e');
+      return {'is_spam': false, 'error': e.toString()};
     }
   }
 }

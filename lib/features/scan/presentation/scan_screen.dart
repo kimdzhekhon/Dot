@@ -14,6 +14,8 @@ import 'package:dot/core/design_system/app_loading_overlay.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dot/core/utils/url_util.dart';
 import 'package:dot/features/scan/presentation/scan_providers.dart';
+import 'package:dot/features/scan/presentation/widgets/scan_stats_header.dart';
+import 'package:dot/features/scan/presentation/widgets/scan_menu_card.dart';
 
 
 
@@ -68,12 +70,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }
 
       // [TEST] 문자 메시지 분석 시 URL 추출 테스트 -> 결과 화면으로 이동
+      // Changed to direct analysis flow
       if (scanType == ScanType.message) {
-        final urls = UrlUtil.extractUrls(text);
-        context.push('/url-extract-result', extra: {
-          'text': text,
-          'urls': urls,
-        });
+        // Now using same flow as others
+        ref.read(scanProvider.notifier).analyzeText(text);
+        FocusScope.of(context).unfocus();
         return;
       }
 
@@ -118,7 +119,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Widget _buildMenuLayout(BuildContext context, ScanState scanState) {
     return Column(
       children: [
-        _buildStatsHeader(),
+        const ScanStatsHeader(),
         const SizedBox(height: 24),
         Expanded(
           child: SingleChildScrollView(
@@ -126,25 +127,28 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                   _buildMenuCard(
+                   ScanMenuCard(
                      label: '공공기관 전화번호', 
                      description: '발신자 번호를 조회하여 안전성을 확인하세요.',
                      type: ScanType.phoneNumber,
                      icon: CupertinoIcons.phone_fill,
+                     onTap: () => ref.read(scanProvider.notifier).changeScanType(ScanType.phoneNumber),
                    ),
                    const SizedBox(height: 16),
-                   _buildMenuCard(
+                   ScanMenuCard(
                      label: '문자메시지', 
                      description: '의심스러운 문자 내용이나 URL의 위험성을 분석합니다.',
                      type: ScanType.message,
                      icon: CupertinoIcons.bubble_left_fill,
+                     onTap: () => ref.read(scanProvider.notifier).changeScanType(ScanType.message),
                    ),
                    const SizedBox(height: 16),
-                   _buildMenuCard(
+                   ScanMenuCard(
                      label: '웹사이트 검색', 
                      description: '사이트 주소를 조회하여 피싱 여부를 확인하세요.',
                      type: ScanType.address,
                      icon: CupertinoIcons.globe,
+                     onTap: () => ref.read(scanProvider.notifier).changeScanType(ScanType.address),
                    ),
                    const SizedBox(height: 32),
                 ],
@@ -156,153 +160,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     );
   }
 
-  Widget _buildStatsHeader() {
-    final counts = ref.watch(tableCountsProvider);
-    
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 10,
-        bottom: 36,
-        left: 24,
-        right: 24,
-      ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF4A80F0), // Solid color for top fill
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF4A80F0), Color(0xFF3B6ADB)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '실시간 안전 데이터 현황',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '안전한 통신을 유지 중입니다',
-            style: TextStyle(
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 32),
-          _buildStatRow('스팸 리스트', (counts['Message_Spam'] ?? 0), CupertinoIcons.ant_fill),
-          const SizedBox(height: 16),
-          _buildStatRow('차단 웹사이트', (counts['Web_Blacklist'] ?? 0), CupertinoIcons.shield_fill),
-          const SizedBox(height: 16),
-          _buildStatRow('기관 정보', (counts['contact_list'] ?? 0), CupertinoIcons.building_2_fill),
-          const SizedBox(height: 16),
-          _buildStatRow('안전 웹사이트', (counts['Web_Whitelist'] ?? 0), CupertinoIcons.checkmark_shield_fill),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, int targetValue, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: Colors.white.withValues(alpha: 0.8)),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: Colors.white,
-          ),
-        ),
-        const Spacer(),
-        _AnimatedCountText(value: targetValue),
-        const SizedBox(width: 4),
-        const Text(
-          '개',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.white60,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMenuCard({
-    required String label,
-    String? description,
-    required ScanType type,
-    required IconData icon,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        ref.read(scanProvider.notifier).changeScanType(type);
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Ensure Icon is visible
-            Icon(icon, color: AppTheme.primary, size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  if (description != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: const TextStyle(
-                         fontSize: 13,
-                         color: Colors.black54,
-                         height: 1.2,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Trailing arrow
-            const Icon(CupertinoIcons.chevron_right, color: Colors.black26, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
 
   // Import at top if not present, but CupertinoIcons is usually available if cupertino_icons pkg is in pubspec? 
   // Actually usually need 'package:flutter/cupertino.dart' for the types, or just 'package:flutter/material.dart' allows Icon widget but CupertinoIcons class needs import?
@@ -798,30 +655,4 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
 }
 
-class _AnimatedCountText extends StatelessWidget {
-  final int value;
-  const _AnimatedCountText({required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: value.toDouble()),
-      duration: const Duration(milliseconds: 1500),
-      curve: Curves.easeOutQuart,
-      builder: (context, val, child) {
-        final formatter = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
-        final formatted = val.toInt().toString().replaceAllMapped(formatter, (m) => '${m[1]},');
-        return Text(
-          formatted,
-          style: const TextStyle(
-            fontSize: 19,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        );
-      },
-    );
-  }
-}
 
