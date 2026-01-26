@@ -13,6 +13,7 @@ import 'package:dot/features/scan/presentation/phone_number_formatter.dart';
 import 'package:dot/core/design_system/app_loading_overlay.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dot/core/utils/url_util.dart';
+import 'package:dot/features/scan/presentation/scan_providers.dart';
 
 
 
@@ -99,15 +100,15 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         // Ensure the background is light gray for the whole screen
         child: Container(
           color: AppTheme.surface, // Use theme surface color (#F2F2F7)
-          child: SafeArea( 
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: scanState.scanType == null
-                  ? _buildMenuLayout(context, scanState)
-                  : dotState == DotState.idle || dotState == DotState.analyzing
-                      ? _buildInputLayout(context, scanState)
-                      : _buildResultLayout(context, scanState),
-            ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: scanState.scanType == null
+                ? _buildMenuLayout(context, scanState)
+                : SafeArea(
+                    child: dotState == DotState.idle || dotState == DotState.analyzing
+                        ? _buildInputLayout(context, scanState)
+                        : _buildResultLayout(context, scanState),
+                  ),
           ),
         ),
       ),
@@ -115,35 +116,127 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Widget _buildMenuLayout(BuildContext context, ScanState scanState) {
-    return Center( 
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20), // Added horizontal padding
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, 
-          children: [
-             _buildMenuCard(
-               label: '공공기관 전화번호', 
-               description: '발신자 번호를 조회하여 안전성을 확인하세요.',
-               type: ScanType.phoneNumber,
-               icon: CupertinoIcons.phone_fill,
-             ),
-             const SizedBox(height: 16),
-             _buildMenuCard(
-               label: '문자메시지', 
-               description: '의심스러운 문자 내용이나 URL의 위험성을 분석합니다.',
-               type: ScanType.message,
-               icon: CupertinoIcons.bubble_left_fill,
-             ),
-             const SizedBox(height: 16),
-             _buildMenuCard(
-               label: '웹사이트 검색', 
-               description: '사이트 주소를 조회하여 피싱 여부를 확인하세요.',
-               type: ScanType.address,
-               icon: CupertinoIcons.globe,
-             ),
-          ],
+    return Column(
+      children: [
+        _buildStatsHeader(),
+        const SizedBox(height: 24),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                   _buildMenuCard(
+                     label: '공공기관 전화번호', 
+                     description: '발신자 번호를 조회하여 안전성을 확인하세요.',
+                     type: ScanType.phoneNumber,
+                     icon: CupertinoIcons.phone_fill,
+                   ),
+                   const SizedBox(height: 16),
+                   _buildMenuCard(
+                     label: '문자메시지', 
+                     description: '의심스러운 문자 내용이나 URL의 위험성을 분석합니다.',
+                     type: ScanType.message,
+                     icon: CupertinoIcons.bubble_left_fill,
+                   ),
+                   const SizedBox(height: 16),
+                   _buildMenuCard(
+                     label: '웹사이트 검색', 
+                     description: '사이트 주소를 조회하여 피싱 여부를 확인하세요.',
+                     type: ScanType.address,
+                     icon: CupertinoIcons.globe,
+                   ),
+                   const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsHeader() {
+    final counts = ref.watch(tableCountsProvider);
+    
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 10,
+        bottom: 36,
+        left: 24,
+        right: 24,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF4A80F0), // Solid color for top fill
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF4A80F0), Color(0xFF3B6ADB)],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
         ),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '실시간 안전 데이터 현황',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '안전한 통신을 유지 중입니다',
+            style: TextStyle(
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 32),
+          _buildStatRow('스팸 리스트', (counts['Message_Spam'] ?? 0), CupertinoIcons.ant_fill),
+          const SizedBox(height: 16),
+          _buildStatRow('차단 웹사이트', (counts['Web_Blacklist'] ?? 0), CupertinoIcons.shield_fill),
+          const SizedBox(height: 16),
+          _buildStatRow('기관 정보', (counts['contact_list'] ?? 0), CupertinoIcons.building_2_fill),
+          const SizedBox(height: 16),
+          _buildStatRow('안전 웹사이트', (counts['Web_Whitelist'] ?? 0), CupertinoIcons.checkmark_shield_fill),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, int targetValue, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.white.withValues(alpha: 0.8)),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
+        const Spacer(),
+        _AnimatedCountText(value: targetValue),
+        const SizedBox(width: 4),
+        const Text(
+          '개',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white60,
+          ),
+        ),
+      ],
     );
   }
 
@@ -703,5 +796,32 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     );
   }
 
+}
+
+class _AnimatedCountText extends StatelessWidget {
+  final int value;
+  const _AnimatedCountText({required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: value.toDouble()),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeOutQuart,
+      builder: (context, val, child) {
+        final formatter = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+        final formatted = val.toInt().toString().replaceAllMapped(formatter, (m) => '${m[1]},');
+        return Text(
+          formatted,
+          style: const TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        );
+      },
+    );
+  }
 }
 
