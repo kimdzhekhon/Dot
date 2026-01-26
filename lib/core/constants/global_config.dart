@@ -3,7 +3,7 @@ class GlobalConfig {
   // Never persisted to disk
   static String? googleKeyAndroid;
   static String? googleKeyIos;
-  static String? vtKey;
+  static String? whoisKey;
 
-  static bool get hasKeys => (googleKeyAndroid != null || googleKeyIos != null) && vtKey != null;
+  static bool get hasKeys => (googleKeyAndroid != null || googleKeyIos != null) && whoisKey != null;
 }

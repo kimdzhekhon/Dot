@@ -12,10 +12,10 @@ serve(async (req) => {
   // 2. Retrieve Secrets from Vault (Environment Variables in Supabase Dashboard)
   const googleKeyAndroid = Deno.env.get('GOOGLE_API_KEY_ANDROID')
   const googleKeyIos = Deno.env.get('GOOGLE_API_KEY_APPLE') // User named it APPLE in screenshot
-  const vtKey = Deno.env.get('VT_API_KEY')
+  const whoisKey = Deno.env.get('WHOIS_API_KEY')
 
   // Relaxed check: at least one google key should exist
-  if ((!googleKeyAndroid && !googleKeyIos) || !vtKey) {
+  if (!googleKeyAndroid && !googleKeyIos) {
     return new Response(
       JSON.stringify({ error: 'Server misconfiguration: Missing keys' }),
       { headers: { "Content-Type": "application/json" }, status: 500 }
@@ -27,7 +27,7 @@ serve(async (req) => {
   const data = {
     google_android: googleKeyAndroid,
     google_ios: googleKeyIos,
-    virustotal: vtKey,
+    whois_key: whoisKey,
   }
 
   return new Response(

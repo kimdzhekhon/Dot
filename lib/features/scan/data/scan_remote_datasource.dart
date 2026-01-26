@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:math';
 import 'dart:io' show Platform;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/network/dio_client.dart';
@@ -12,15 +14,18 @@ class ScanRemoteDataSource {
 
   /// 1. Fetch Keys from Edge Function
   Future<void> fetchSecureKeys() async {
+    print('[ScanRemoteDataSource] Requesting secure keys...');
     try {
       final response = await _supabaseClient.functions.invoke('get-secure-keys');
       final data = response.data;
+      print('[ScanRemoteDataSource] fetchSecureKeys success: $data');
       if (data != null) {
         GlobalConfig.googleKeyAndroid = data['google_android'];
         GlobalConfig.googleKeyIos = data['google_ios'];
-        GlobalConfig.vtKey = data['virustotal'];
+        GlobalConfig.whoisKey = data['whois_key'];
       }
     } catch (e) {
+      print('[ScanRemoteDataSource] fetchSecureKeys failed: $e');
       throw NetworkException(message: "Failed to fetch secure keys: $e");
     }
   }
@@ -66,40 +71,29 @@ class ScanRemoteDataSource {
           }
         },
       );
+      print('[ScanRemoteDataSource] Google SB Response: ${response.data}');
       // If empty object returned, it means safe.
       return response.data ?? {}; 
     } catch (e) {
+      print('[ScanRemoteDataSource] Google SB Error: $e');
       // Fail silently for Vibe (or log)
       return {};
     }
   }
 
-  /// 3. VirusTotal API
-  Future<Map<String, dynamic>> scanUrlVt(String url) async {
-    if (GlobalConfig.vtKey == null) await fetchSecureKeys();
-    
-    try {
-      // Helper to base64 encode URL for VT
-      // ...
-      // For now returning mock
-      return {'positives': 0, 'total': 90};
-    } catch (e) {
-      return {};
-    }
-  }
+
 
   /// 4. Calculate Score (RPC)
   Future<int> calculateDotScore({
     required String message,
     required Map<String, dynamic> googleResult,
-    required Map<String, dynamic> vtResult,
     String? url,
   }) async {
     try {
       final score = await _supabaseClient.rpc('calculate_dot_score', params: {
         'msg_body': message,
         'google_raw': googleResult,
-        'vt_raw': vtResult,
+        'vt_raw': {}, // Always empty as VT is removed from client
         'target_url': url,
       });
       return score as int;
@@ -135,6 +129,55 @@ class ScanRemoteDataSource {
     } catch (e) {
       // Return empty/not-found to allow fallback to other scanner APIs
       return {'found': false, 'status': 'none'};
+    }
+  }
+
+  Future<Map<String, dynamic>> checkWhois(String url) async {
+    // 1. Get Key
+    if (GlobalConfig.whoisKey == null) await fetchSecureKeys();
+    final whoisKey = GlobalConfig.whoisKey;
+
+    if (whoisKey == null) return {};
+
+    print('[ScanRemoteDataSource] Using WHOIS Key: ${whoisKey.substring(0, min(5, whoisKey.length))}...');
+
+    try {
+      // 2. Extract Domain 
+      final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
+      final host = uri.host;
+      
+      // 3. Call KISA WHOIS API
+      final response = await _dioClient.get(
+        'http://whois.kisa.or.kr/openapi/whois.jsp',
+        queryParameters: {
+          'query': host,
+          'serviceKey': whoisKey, // User's doc says serviceKey, not key
+          'answer': 'json',
+        },
+      );
+      
+      var responseData = response.data;
+      print('[ScanRemoteDataSource] WHOIS Raw Response Type: ${responseData.runtimeType}');
+      print('[ScanRemoteDataSource] WHOIS Raw Response: $responseData');
+
+      if (responseData is String) {
+        try {
+          responseData = jsonDecode(responseData);
+          print('[ScanRemoteDataSource] WHOIS Parsed from String: $responseData');
+        } catch (e) {
+          print('[ScanRemoteDataSource] JSON Decode Error: $e');
+        }
+      }
+
+      if (responseData is Map<String, dynamic> && responseData['whois'] != null) {
+         final whoisData = responseData['whois'];
+         print('[ScanRemoteDataSource] WHOIS Final Data: $whoisData');
+         return whoisData;
+      }
+      return {};
+    } catch (e) {
+      print('[ScanRemoteDataSource] WHOIS Error: $e');
+      return {};
     }
   }
 }
