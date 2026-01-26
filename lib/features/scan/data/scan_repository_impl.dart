@@ -67,7 +67,17 @@ class ScanRepositoryImpl implements ScanRepository {
 
       if (url != null) {
         if (type == ScanType.address) {
-          webListResult = await _dataSource.checkWebList(url);
+          // Normalize URL: Extract host to check against domain-based web list
+          // Example: ibe.gh7w.yachts/1 -> ibe.gh7w.yachts
+          String domainToCheck = url;
+          try {
+             final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
+             if (uri.host.isNotEmpty) {
+               domainToCheck = uri.host;
+             }
+          } catch (_) {}
+          
+          webListResult = await _dataSource.checkWebList(domainToCheck);
           
           if (webListResult['found'] == true) {
             final isWhitelisted = webListResult['status'] == 'whitelisted';
