@@ -421,6 +421,57 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                       '등록일: ${state.details!['webList']['reg_date'] ?? '정보 없음'}',
                       style: const TextStyle(fontSize: 14, color: Colors.black54),
                     ),
+                  ] else if (state.scanType == ScanType.address && state.details?['whois']?.isNotEmpty == true) ...[
+                     const SizedBox(height: 16),
+                     if (state.details?['isNewDomain'] == true)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.warning.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.warning),
+                          ),
+                          child: Text(
+                            "⚠️ 신규 생성 도메인 (48시간 이내)",
+                            style: TextStyle(
+                              color: AppTheme.warning,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                     // Detailed WHOIS Info
+                     Container(
+                       width: double.infinity,
+                       padding: const EdgeInsets.all(16),
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         borderRadius: BorderRadius.circular(12),
+                         border: Border.all(color: Colors.black12),
+                       ),
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text(
+                             "도메인 상세 정보",
+                             style: TextStyle(
+                               fontSize: 15,
+                               fontWeight: FontWeight.bold,
+                               color: Colors.black87,
+                             ),
+                           ),
+                           const SizedBox(height: 12),
+                           _buildInfoRow('등록일', state.details!['whois']['regDate'] ?? '-'),
+                           const SizedBox(height: 8),
+                           _buildInfoRow('등록인/기관', state.details!['whois']['regName'] ?? '-'),
+                           const SizedBox(height: 8),
+                           _buildInfoRow('주소(국적)', state.details!['whois']['addr'] ?? '-'),
+                           const SizedBox(height: 8),
+                           _buildInfoRow('등록 대행자', state.details!['whois']['agency'] ?? '-'),
+                         ],
+                       ),
+                     ),
                   ],
                 ],
               ),
