@@ -99,9 +99,6 @@ class ScanRepositoryImpl implements ScanRepository {
         ]);
         googleResult = results[0];
         whoisResult = results[1];
-        
-        print('[ScanRepositoryImpl] Google Result: $googleResult');
-        print('[ScanRepositoryImpl] WHOIS Result: $whoisResult');
       }
 
       // 3. RPC Call for scoring (mainly for messages or unknown URLs)
@@ -143,7 +140,11 @@ class ScanRepositoryImpl implements ScanRepository {
       } else if (isSafe) {
          displayMessage = (type == ScanType.address ? "데이터베이스에 없으나 안전해보입니다." : "안전해보입니다.");
       } else {
-         displayMessage = "위협이 감지되었습니다 ($score점).";
+         if (type == ScanType.address) {
+            displayMessage = "위협이 감지되었습니다";
+         } else {
+            displayMessage = "위협이 감지되었습니다 ($score점).";
+         }
       }
 
       return Right(ScanResult(
