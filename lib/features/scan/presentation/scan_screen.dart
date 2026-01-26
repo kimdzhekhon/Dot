@@ -7,6 +7,7 @@ import 'package:dot/features/scan/presentation/dot_animation.dart';
 import 'package:dot/features/scan/presentation/scan_controller.dart';
 import 'package:dot/features/scan/domain/scan_type.dart';
 import 'package:dot/features/scan/presentation/phone_number_formatter.dart';
+import 'package:dot/core/design_system/app_loading_overlay.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 
@@ -61,47 +62,22 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final scanState = ref.watch(scanProvider);
     final dotState = scanState.dotState;
 
-    return AppResponsiveLayout(
-      // Ensure the background is light gray for the whole screen
-      child: Container(
-        color: AppTheme.surface, // Use theme surface color (#F2F2F7)
-        child: SafeArea( // Apply SafeArea as requested
-          child: Stack(
-            children: [
-              // Content Layout
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: scanState.scanType == null
-                    ? _buildMenuLayout(context, scanState)
-                    : dotState == DotState.idle || dotState == DotState.analyzing
-                        ? _buildInputLayout(context, scanState)
-                        : _buildResultLayout(context, scanState),
-              ),
-              
-              // Loading Overlay (Overlaying the input field during analysis)
-              if (dotState == DotState.analyzing)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        DotAnimation(state: dotState, size: 240),
-                        const SizedBox(height: 24),
-                        const Text(
-                          '위협 분석 중...',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.analyzing,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-            ],
+    return AppLoadingOverlay(
+      isLoading: dotState == DotState.analyzing,
+      message: '위협 분석 중...',
+      child: AppResponsiveLayout(
+        // Ensure the background is light gray for the whole screen
+        child: Container(
+          color: AppTheme.surface, // Use theme surface color (#F2F2F7)
+          child: SafeArea( 
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: scanState.scanType == null
+                  ? _buildMenuLayout(context, scanState)
+                  : dotState == DotState.idle || dotState == DotState.analyzing
+                      ? _buildInputLayout(context, scanState)
+                      : _buildResultLayout(context, scanState),
+            ),
           ),
         ),
       ),
