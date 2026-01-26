@@ -26,29 +26,32 @@ class AppLoadingOverlay extends StatelessWidget {
             child: GestureDetector(
               onTap: () {}, // 터치 이벤트 흡수
               behavior: HitTestBehavior.opaque,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.4), // 반투명 회색 배경
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Lottie.asset(
-                        'assets/animation/Loading Files.json',
-                        width: 200,
-                        height: 200,
-                      ),
-                      if (message != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          message!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+              child: Material(
+                type: MaterialType.transparency,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.4), // 반투명 회색 배경
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Lottie.asset(
+                          'assets/animation/Loading Files.json',
+                          width: 200,
+                          height: 200,
                         ),
+                        if (message != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            message!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
