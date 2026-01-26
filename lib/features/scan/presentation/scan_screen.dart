@@ -10,6 +10,7 @@ import 'package:dot/features/scan/domain/scan_type.dart';
 import 'package:dot/features/scan/presentation/phone_number_formatter.dart';
 import 'package:dot/core/design_system/app_loading_overlay.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dot/core/utils/url_util.dart';
 
 
 
@@ -61,6 +62,56 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
            )
          );
          return;
+      }
+
+      // [TEST] 문자 메시지 분석 시 URL 추출 테스트
+      if (scanType == ScanType.message) {
+        final urls = UrlUtil.extractUrls(text);
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('URL 추출 테스트'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('원본 텍스트:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(text, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(height: 16),
+                  const Text('추출된 URL:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  if (urls.isNotEmpty)
+                    ...urls.map((u) => Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(u, style: const TextStyle(color: Colors.blue)),
+                    )).toList()
+                  else
+                    const Text('검출된 URL 없음', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('닫기'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ref.read(scanProvider.notifier).analyzeText(text); 
+                  FocusScope.of(context).unfocus();
+                },
+                child: const Text('계속 진행'),
+              ),
+            ],
+          ),
+        );
+        return;
       }
 
       ref.read(scanProvider.notifier).analyzeText(text);
