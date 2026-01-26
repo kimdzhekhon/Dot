@@ -12,12 +12,14 @@ class ScanState {
   final String? message;
   final int? score;
   final ScanType? scanType;
+  final Map<String, dynamic>? details;
 
   ScanState({
     required this.dotState,
     this.message,
     this.score,
-    this.scanType, // Default null = Menu Mode
+    this.scanType,
+    this.details,
   });
 
   ScanState copyWith({
@@ -25,13 +27,15 @@ class ScanState {
     String? message,
     int? score,
     ScanType? scanType,
-    bool clearScanType = false, // Helper to explicitly set null
+    Map<String, dynamic>? details,
+    bool clearScanType = false,
   }) {
     return ScanState(
       dotState: dotState ?? this.dotState,
       message: message ?? this.message,
       score: score ?? this.score,
       scanType: clearScanType ? null : (scanType ?? this.scanType),
+      details: details ?? this.details,
     );
   }
 }
@@ -46,18 +50,16 @@ class ScanViewModel extends StateNotifier<ScanState> {
     state = state.copyWith(
       scanType: type,
       clearScanType: type == null,
+      details: null,
     );
     if (type == null) {
-      // Reset state when going back to menu
       reset();
     }
   }
 
   Future<void> analyzeText(String text) async {
-    // 1. Idle -> Analyzing
     state = state.copyWith(dotState: DotState.analyzing);
 
-    // 2. UseCase Call
     final result = await _scanTextUseCase(text, state.scanType!);
 
 
@@ -66,7 +68,7 @@ class ScanViewModel extends StateNotifier<ScanState> {
         state = state.copyWith(
           dotState: DotState.warning, 
           message: failure.message,
-          score: -1, // Error indicator
+          score: -1,
         );
       },
       (success) {
@@ -83,6 +85,7 @@ class ScanViewModel extends StateNotifier<ScanState> {
           dotState: dotState,
           score: success.score,
           message: success.message,
+          details: success.details,
         );
       },
 
@@ -90,7 +93,7 @@ class ScanViewModel extends StateNotifier<ScanState> {
   }
 
   void reset() {
-    state = state.copyWith(dotState: DotState.idle, score: null, message: null);
+    state = state.copyWith(dotState: DotState.idle, score: null, message: null, details: null);
   }
 }
 
