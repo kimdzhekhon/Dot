@@ -5,15 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dot/core/design_system/app_responsive_layout.dart';
 import 'package:dot/core/design_system/app_theme.dart';
 import 'package:dot/core/design_system/app_button.dart';
-import 'package:go_router/go_router.dart';
+
 import 'package:dot/features/scan/presentation/dot_animation.dart';
 import 'package:dot/features/scan/presentation/scan_controller.dart';
 import 'package:dot/features/scan/domain/scan_type.dart';
 import 'package:dot/features/scan/presentation/phone_number_formatter.dart';
 import 'package:dot/core/design_system/app_loading_overlay.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:dot/core/utils/url_util.dart';
-import 'package:dot/features/scan/presentation/scan_providers.dart';
 import 'package:dot/features/scan/presentation/widgets/scan_stats_header.dart';
 import 'package:dot/features/scan/presentation/widgets/scan_menu_card.dart';
 

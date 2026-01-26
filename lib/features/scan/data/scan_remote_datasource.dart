@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/network/dio_client.dart';
 import 'package:dot/core/network/network_exception.dart';
@@ -171,43 +171,36 @@ class ScanRemoteDataSource {
 
   /// 7. Analyze Spam Message (Local w/ Gemini API)
   Future<Map<String, dynamic>> analyzeSpamMessage(String text) async {
-    print('🔍 [ScanRemoteDataSource] analyzeSpamMessage started. text length: ${text.length}');
     try {
       // 1. Get Key
       if (GlobalConfig.geminiKey == null) {
-         print('⚠️ [ScanRemoteDataSource] geminiKey is null. Attempting fallback or check.');
+         // Log or handle missing key if necessary
       }
       final apiKey = GlobalConfig.geminiKey ?? GlobalConfig.googleKey; 
       
       if (apiKey == null) {
-         print('❌ [ScanRemoteDataSource] API Key Missing! Cannot proceed with Gemini analysis.');
          return {'is_spam': false, 'error': 'Missing API Key'};
       }
-      print('✅ [ScanRemoteDataSource] API Key found. Initializing GenerativeModel...');
 
       // 2. Generate Embedding Locally
       final model = GenerativeModel(model: 'text-embedding-004', apiKey: apiKey);
       final content = Content.text(text);
       
-      print('⏳ [ScanRemoteDataSource] Calling Gemini API (embedContent)...');
       final embeddingResult = await model.embedContent(content);
       final embedding = embeddingResult.embedding.values;
-      print('✅ [ScanRemoteDataSource] Embedding generated. Vector dimension: ${embedding.length}');
 
       // 3. Search via RPC (match_messages)
-      print('⏳ [ScanRemoteDataSource] Calling Supabase RPC: match_messages...');
+      // Call Supabase RPC directly with the vector
       final response = await _supabaseClient.rpc('match_messages', params: {
         'query_embedding': embedding,
-        'match_threshold': 0.0, // Debugging: Lower threshold to see what matches
-        'match_count': 5, // Get top 5
+        'match_threshold': 0.70, 
+        'match_count': 1,
       });
-      print('✅ [ScanRemoteDataSource] RPC Response received: $response');
 
       final List<dynamic> data = response as List<dynamic>;
 
       if (data.isNotEmpty) {
         final bestMatch = data[0];
-        print('🚨 [ScanRemoteDataSource] Spam Match Found! Similarity: ${bestMatch['similarity']}');
         return {
           'is_spam': true,
           'similarity': bestMatch['similarity'],
@@ -215,11 +208,9 @@ class ScanRemoteDataSource {
         };
       }
 
-      print('✅ [ScanRemoteDataSource] No spam match found above threshold.');
       return {'is_spam': false};
 
     } catch (e) {
-      print('❌ [ScanRemoteDataSource] Error in analyzeSpamMessage: $e');
       return {'is_spam': false, 'error': e.toString()};
     }
   }
