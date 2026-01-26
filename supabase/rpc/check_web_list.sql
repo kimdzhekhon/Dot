@@ -7,7 +7,7 @@
 CREATE OR REPLACE FUNCTION check_web_list(p_url text)
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 AS $$
 DECLARE
   v_site_name text;
@@ -48,3 +48,31 @@ BEGIN
   );
 END;
 $$;
+
+-- RLS (Row Level Security) 설정
+-- Web_Whitelist 및 Web_Blacklist 테이블에 대해 읽기 권한을 허용합니다.
+
+-- 1. RLS 활성화
+ALTER TABLE "Web_Whitelist" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Web_Blacklist" ENABLE ROW LEVEL SECURITY;
+
+-- 2. 정책 추가 (모든 사용자에게 SELECT 허용)
+-- 인증된 사용자(authenticated) 또는 익명 사용자(anon)가 조회할 수 있도록 설정합니다.
+
+DROP POLICY IF EXISTS "Allow public read for Web_Whitelist" ON "Web_Whitelist";
+CREATE POLICY "Allow public read for Web_Whitelist" 
+ON "Web_Whitelist" 
+FOR SELECT 
+TO public 
+USING (true);
+
+DROP POLICY IF EXISTS "Allow public read for Web_Blacklist" ON "Web_Blacklist";
+CREATE POLICY "Allow public read for Web_Blacklist" 
+ON "Web_Blacklist" 
+FOR SELECT 
+TO public 
+USING (true);
+
+-- 권한 부여 (public 스키마의 해당 테이블에 대한 SELECT 권한을 anon, authenticated 역할에 부여)
+GRANT SELECT ON "Web_Whitelist" TO anon, authenticated;
+GRANT SELECT ON "Web_Blacklist" TO anon, authenticated;

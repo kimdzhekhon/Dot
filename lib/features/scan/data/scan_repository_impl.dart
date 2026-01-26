@@ -47,7 +47,15 @@ class ScanRepositoryImpl implements ScanRepository {
       // 1. Identify URL
       String? url;
       final uri = Uri.tryParse(text);
-      if (uri != null && (uri.isScheme('http') || uri.isScheme('https'))) {
+      if (uri != null) {
+        final scheme = uri.scheme.toLowerCase();
+        if (scheme == 'http' || scheme == 'https' || scheme == 'hxxp' || scheme == 'hxxps') {
+          url = text;
+        }
+      }
+      
+      // If still null but it's an address scan, assume the whole text is the target
+      if (url == null && type == ScanType.address) {
         url = text;
       }
 

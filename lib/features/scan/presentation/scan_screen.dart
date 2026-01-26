@@ -54,6 +54,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   void _onReset() {
+    _textController.clear();
     ref.read(scanProvider.notifier).reset();
   }
 
