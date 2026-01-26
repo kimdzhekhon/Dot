@@ -122,7 +122,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           mainAxisAlignment: MainAxisAlignment.center, 
           children: [
              _buildMenuCard(
-               label: '전화번호', 
+               label: '공공기관 전화번호', 
                description: '발신자 번호를 조회하여 안전성을 확인하세요.',
                type: ScanType.phoneNumber,
                icon: CupertinoIcons.phone_fill,
@@ -428,20 +428,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                     ),
                   ),
 
-                  // Disclaimer for Web Scan (or potentially others)
-                  if (state.scanType == ScanType.address)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        '분석 결과는 참고용으로만 사용해 주세요.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.black45,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  if (state.scanType == ScanType.address && state.details?['webList']?['found'] == true) ...[
+                  ),
+                ],
+              ),
+            ],
                     const SizedBox(height: 16),
                     Text(
                       '등록 주체: ${state.details!['webList']['reg_subject'] ?? '정보 없음'}',
@@ -507,6 +497,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 ],
               ),
             ],
+            
+            const SizedBox(height: 24),
+            // Disclaimer for all scans
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                '분석 결과는 참고용으로만 사용해 주세요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black45,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
 
             const Spacer(),
 
@@ -552,7 +557,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   String _getTypeLabel(ScanType type) {
 
     switch (type) {
-      case ScanType.phoneNumber: return '전화번호 분석';
+      case ScanType.phoneNumber: return '공공기관 전화번호 분석';
       case ScanType.message: return '문자메시지 분석';
       case ScanType.address: return '웹사이트 검색'; // Updated Title
     }
@@ -630,7 +635,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '전화번호 입력',
+          '공공기관 전화번호 입력',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
