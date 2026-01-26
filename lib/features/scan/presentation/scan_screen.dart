@@ -70,12 +70,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }
 
       // [TEST] 문자 메시지 분석 시 URL 추출 테스트 -> 결과 화면으로 이동
+      // Changed to direct analysis flow
       if (scanType == ScanType.message) {
-        final urls = UrlUtil.extractUrls(text);
-        context.push('/url-extract-result', extra: {
-          'text': text,
-          'urls': urls,
-        });
+        // Now using same flow as others
+        ref.read(scanProvider.notifier).analyzeText(text);
+        FocusScope.of(context).unfocus();
         return;
       }
 

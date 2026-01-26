@@ -26,6 +26,7 @@ final bootstrapProvider = FutureProvider<void>((ref) async {
         // Update Memory Config (GlobalConfig)
         GlobalConfig.googleKey = googleKey;
         GlobalConfig.whoisKey = keys['whois_key'];
+        GlobalConfig.geminiKey = keys['gemini_key'];
       }
 
       if (counts != null) {

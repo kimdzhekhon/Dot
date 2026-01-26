@@ -128,27 +128,34 @@ class ScanRepositoryImpl implements ScanRepository {
         whoisResult = results[1];
       }
 
-      // 3. RPC Call for scoring (mainly for messages or unknown URLs)
+      // 3. Spam Message Analysis (Only for Message Type)
+      Map<String, dynamic> spamResult = {};
+      if (type == ScanType.message) {
+         print('🔍 [ScanRepository] Starting Spam Analysis for message...');
+         try {
+           spamResult = await _dataSource.analyzeSpamMessage(text);
+           print('✅ [ScanRepository] Spam Analysis Result: $spamResult');
+         } catch (e) {
+           print('❌ [ScanRepository] Spam Analysis Failed: $e');
+         }
+      }
+
+      // 4. RPC Call for scoring (mainly for messages or unknown URLs)
+      print('🔍 [ScanRepository] Calculating Dot Score...');
       final score = await _dataSource.calculateDotScore(
         message: text,
         googleResult: googleResult,
         url: url,
       );
+      print('✅ [ScanRepository] Dot Score Calculated: $score');
 
-      // 4. Map to Entity
-      // 5. Post-Score Analysis for New Domains (Client-side logic as requested)
-      // Check if domain is created within 48 hours
+      // 5. Map to Entity
+      // 6. Post-Score Analysis for New Domains
       bool isNewDomain = false;
-      if (whoisResult.isNotEmpty && whoisResult.containsKey('regDate')) { // KISA key might differ, need to handle parsing robustly
-         // Assuming KISA returns 'regDate' or similar in the raw map we returned
-         // Actually KISA structure is complex. Let's assume we look for a standard date string if available
-         // For now, I will add a parser in the repo or rely on what DataSource returns.
-         // DataSource returns `response.data['whois']`.
-         // Let's try to parse 'regDate' from it.
+      if (whoisResult.isNotEmpty && whoisResult.containsKey('regDate')) {
          final regDateStr = whoisResult['regDate'] as String?;
          if (regDateStr != null) {
             try {
-              // Parse date (Format varies, e.g., YYYY.MM.DD or YYYY-MM-DD)
               final cleanDate = regDateStr.replaceAll('.', '-');
               final regDate = DateTime.parse(cleanDate);
               final diff = DateTime.now().difference(regDate);
@@ -159,30 +166,44 @@ class ScanRepositoryImpl implements ScanRepository {
          }
       }
 
-      final isSafe = score < 50 && !isNewDomain; // Force unsafe if new domain
-      
+      // 7. Combine Scores (Base Score + Spam Similarity)
+      int finalScore = score;
       String displayMessage = "";
-      if (isNewDomain) {
+      
+      bool isSpam = spamResult['is_spam'] == true;
+      double similarity = spamResult['similarity'] != null ? (spamResult['similarity'] as num).toDouble() : 0.0;
+      
+      // If recognized as spam by vector search, boost score significantly
+      if (isSpam && finalScore < 80) {
+        print('⚠️ [ScanRepository] Boosting score due to Spam Match (Similarity: $similarity)');
+        finalScore = (similarity * 100).toInt().clamp(80, 100);
+      }
+
+      print('🏁 [ScanRepository] Final Score: $finalScore (Original: $score, IsSpam: $isSpam)');
+
+      // Determine Status
+      final isSafe = finalScore < 50 && !isNewDomain && !isSpam;
+
+      if (isSpam) {
+         displayMessage = "스팸 메시지로 의심됩니다 (유사도 ${(similarity * 100).toInt()}%).";
+      } else if (isNewDomain) {
          displayMessage = "생성된 지 얼마 안 된 의심스러운 주소입니다.";
-      } else if (isSafe) {
-         displayMessage = (type == ScanType.address ? "데이터베이스에 없으나 안전해보입니다." : "안전해보입니다.");
+      } else if (finalScore >= 50) {
+         displayMessage = "위협이 감지되었습니다 ($finalScore점).";
       } else {
-         if (type == ScanType.address) {
-            displayMessage = "위협이 감지되었습니다";
-         } else {
-            displayMessage = "위협이 감지되었습니다 ($score점).";
-         }
+         displayMessage = (type == ScanType.address ? "데이터베이스에 없으나 안전해보입니다." : "안전해보입니다.");
       }
 
       return Right(ScanResult(
-        score: isNewDomain ? (score < 50 ? 50 : score) : score, // Boost score to at least 50 (Warning)
+        score: isNewDomain ? (finalScore < 50 ? 50 : finalScore) : finalScore,
         message: displayMessage,
         isSafe: isSafe,
         details: {
            'google': googleResult, 
            'webList': webListResult,
            'whois': whoisResult,
-           'isNewDomain': isNewDomain
+           'isNewDomain': isNewDomain,
+           'spamResult': spamResult
         },
       ));
     } on NetworkException catch (e) {
