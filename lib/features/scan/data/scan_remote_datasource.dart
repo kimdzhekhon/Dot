@@ -5,11 +5,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dot/core/network/dio_client.dart';
 import 'package:dot/core/network/network_exception.dart';
 import 'package:dot/core/constants/global_config.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:dot/features/scan/data/onnx_embedding_service.dart';
 
 class ScanRemoteDataSource {
   final DioClient _dioClient;
   final SupabaseClient _supabaseClient;
+  final OnnxEmbeddingService _onnxService = OnnxEmbeddingService();
 
   ScanRemoteDataSource(this._dioClient, this._supabaseClient);
 
@@ -22,7 +23,6 @@ class ScanRemoteDataSource {
         final keys = data['keys'] as Map<String, dynamic>;
         GlobalConfig.googleKey = keys['google_key'];
         GlobalConfig.whoisKey = keys['whois_key'];
-        GlobalConfig.geminiKey = keys['gemini_key'];
       }
     } catch (e) {
       throw NetworkException(message: "Failed to fetch secure keys: $e");
@@ -170,57 +170,74 @@ class ScanRemoteDataSource {
     }
   }
 
-  /// 7. Analyze Spam Message (Local w/ Gemini API)
+  /// 7. Analyze Spam Message (Hybrid: Text + AI)
   Future<Map<String, dynamic>> analyzeSpamMessage(String text) async {
-    debugPrint('🔍 [ScanRemoteDataSource] analyzeSpamMessage started. text length: ${text.length}');
+    debugPrint('🔍 [ScanRemoteDataSource] analyzeSpamMessage (Hybrid) started. text: "$text"');
     try {
-      // 1. Get Key
-      if (GlobalConfig.geminiKey == null) {
-         debugPrint('⚠️ [ScanRemoteDataSource] geminiKey is null. Attempting fallback or check.');
+      // 1. Stage 1: Text-based Search (High accuracy for literal matches)
+      if (text.length >= 5) {
+        debugPrint('⏳ [ScanRemoteDataSource] Stage 1: Text Search...');
+        try {
+          final textResults = await _supabaseClient.rpc('search_spam_text', params: {
+            'p_query_text': text,
+          });
+          
+          if (textResults is List && textResults.isNotEmpty) {
+            final bestText = textResults[0];
+            final textSim = (bestText['similarity'] as num).toDouble();
+            debugPrint('🔍 [ScanRemoteDataSource] Text Similarity: $textSim');
+            
+            // If text is 80% similar, flag immediately
+            if (textSim > 0.8) {
+              debugPrint('🚨 [ScanRemoteDataSource] Spam Match (Stage 1 - Text)!');
+              return {
+                'is_spam': true, 
+                'similarity': textSim, 
+                'matched_content': bestText['content']
+              };
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ [ScanRemoteDataSource] Text search failed: $e');
+        }
       }
-      final apiKey = GlobalConfig.geminiKey ?? GlobalConfig.googleKey; 
-      
-      if (apiKey == null) {
-         debugPrint('❌ [ScanRemoteDataSource] API Key Missing! Cannot proceed with Gemini analysis.');
-         return {'is_spam': false, 'error': 'Missing API Key'};
-      }
-      debugPrint('✅ [ScanRemoteDataSource] API Key found. Initializing GenerativeModel...');
 
-      // 2. Generate Embedding Locally
-      final model = GenerativeModel(model: 'text-embedding-004', apiKey: apiKey);
-      final content = Content.text(text);
+      // 2. Stage 2: AI Embedding Search (Semantic matching)
+      debugPrint('⏳ [ScanRemoteDataSource] Stage 2: AI Embedding Search...');
+      final embedding = await _onnxService.getEmbedding('query: $text');
       
-      debugPrint('⏳ [ScanRemoteDataSource] Calling Gemini API (embedContent)...');
-      final embeddingResult = await model.embedContent(content);
-      final embedding = embeddingResult.embedding.values;
-      debugPrint('✅ [ScanRemoteDataSource] Embedding generated. Vector dimension: ${embedding.length}');
-
-      // 3. Search via RPC (match_messages)
-      debugPrint('⏳ [ScanRemoteDataSource] Calling Supabase RPC: match_messages...');
       final response = await _supabaseClient.rpc('match_messages', params: {
         'query_embedding': embedding,
-        'match_threshold': 0.70, 
+        'match_threshold': 0.1, // Raw score for heuristic
         'match_count': 1,
       });
-      debugPrint('✅ [ScanRemoteDataSource] RPC Response received: $response');
 
       final List<dynamic> data = response as List<dynamic>;
-
       if (data.isNotEmpty) {
         final bestMatch = data[0];
-        debugPrint('🚨 [ScanRemoteDataSource] Spam Match Found! Similarity: ${bestMatch['similarity']}');
-        return {
-          'is_spam': true,
-          'similarity': bestMatch['similarity'],
-          'matched_content': bestMatch['content'],
-        };
+        final aiSim = (bestMatch['similarity'] as num).toDouble();
+        debugPrint('🔍 [ScanRemoteDataSource] Best match similarity (AI): $aiSim');
+        
+        // Logical Heuristics to prevent false positives for short text:
+        // 1. Definitely Spam: Score is exceptionally high (>= 0.93)
+        // 2. Likely Spam: Score is high (>= 0.88) AND text is long (> 10)
+        // 3. Short False Positive (like '123123'): Length <= 10 and Score < 0.93 -> Ignored
+        
+        if (aiSim >= 0.93 || (aiSim >= 0.88 && text.length > 10)) {
+            debugPrint('🚨 [ScanRemoteDataSource] Spam Match (Stage 2 - AI)!');
+            return {
+              'is_spam': true, 
+              'similarity': aiSim, 
+              'matched_content': bestMatch['content']
+            };
+        }
       }
 
-      debugPrint('✅ [ScanRemoteDataSource] No spam match found above threshold.');
+      debugPrint('✅ [ScanRemoteDataSource] No spam match found below threshold or length rule.');
       return {'is_spam': false};
 
     } catch (e) {
-      debugPrint('❌ [ScanRemoteDataSource] Error in analyzeSpamMessage: $e');
+      debugPrint('❌ [ScanRemoteDataSource] analyzeSpamMessage failed: $e');
       return {'is_spam': false, 'error': e.toString()};
     }
   }

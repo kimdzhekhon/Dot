@@ -354,7 +354,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ],
             
-            if (state.score != null && state.score! >= 0 && state.scanType != ScanType.phoneNumber) ...[
+            if (state.score != null && state.score! >= 0 && state.scanType != ScanType.phoneNumber && dotState != DotState.safe) ...[
               const SizedBox(height: 24),
               Column(
                 children: [
