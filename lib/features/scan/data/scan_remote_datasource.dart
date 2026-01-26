@@ -17,9 +17,11 @@ class ScanRemoteDataSource {
       final response = await _supabaseClient.functions.invoke('get-secure-keys');
       final data = response.data;
       if (data != null) {
-        GlobalConfig.googleKeyAndroid = data['google_android'];
-        GlobalConfig.googleKeyIos = data['google_ios'];
-        GlobalConfig.whoisKey = data['whois_key'];
+        final keys = data['keys'] as Map<String, dynamic>?;
+        if (keys != null) {
+          GlobalConfig.googleKey = keys['google_key'];
+          GlobalConfig.whoisKey = keys['whois_key'];
+        }
       }
     } catch (e) {
       throw NetworkException(message: "Failed to fetch secure keys: $e");
@@ -28,25 +30,16 @@ class ScanRemoteDataSource {
 
   /// 2. Google Safe Browsing API (v4)
   Future<Map<String, dynamic>> checkGoogleSafeBrowsing(String url) async {
-    // Select Key based on Platform
-    String? googleKey;
-    if (Platform.isAndroid) {
-       googleKey = GlobalConfig.googleKeyAndroid;
-    } else if (Platform.isIOS) {
-       googleKey = GlobalConfig.googleKeyIos;
-    }
+    // Use single Consolidated Key
+    String? googleKey = GlobalConfig.googleKey;
     
-    // If key missing for current platform, try fetch
+    // If key missing, try fetch
     if (googleKey == null) {
        await fetchSecureKeys();
-       if (Platform.isAndroid) {
-          googleKey = GlobalConfig.googleKeyAndroid;
-       } else if (Platform.isIOS) {
-          googleKey = GlobalConfig.googleKeyIos;
-       }
+       googleKey = GlobalConfig.googleKey;
     }
 
-    if (googleKey == null) return {}; // Still missing?
+    if (googleKey == null) return {};
 
     try {
       final response = await _dioClient.post(

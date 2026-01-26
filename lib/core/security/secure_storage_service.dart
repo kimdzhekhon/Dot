@@ -9,8 +9,7 @@ class SecureStorageService {
   );
 
   static const String _keyTableCounts = 'table_counts';
-  static const String _keyGoogleAndroid = 'google_android_key';
-  static const String _keyGoogleIos = 'google_ios_key';
+  static const String _keyGoogleKey = 'google_api_key';
   static const String _keyWhoisKey = 'whois_api_key';
 
   Future<void> saveTableCounts(Map<String, dynamic> counts) async {
@@ -28,17 +27,14 @@ class SecureStorageService {
   }
 
   Future<void> saveSecureKeys({
-    required String? googleAndroid,
-    required String? googleIos,
+    required String? googleKey,
     required String? whoisKey,
   }) async {
-    if (googleAndroid != null) await _storage.write(key: _keyGoogleAndroid, value: googleAndroid);
-    if (googleIos != null) await _storage.write(key: _keyGoogleIos, value: googleIos);
+    if (googleKey != null) await _storage.write(key: _keyGoogleKey, value: googleKey);
     if (whoisKey != null) await _storage.write(key: _keyWhoisKey, value: whoisKey);
   }
 
-  Future<String?> getGoogleAndroidKey() => _storage.read(key: _keyGoogleAndroid);
-  Future<String?> getGoogleIosKey() => _storage.read(key: _keyGoogleIos);
+  Future<String?> getGoogleKey() => _storage.read(key: _keyGoogleKey);
   Future<String?> getWhoisKey() => _storage.read(key: _keyWhoisKey);
 }
 

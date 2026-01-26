@@ -11,22 +11,9 @@ class DotApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final bootstrap = ref.watch(bootstrapProvider);
+    // Listen to bootstrap to trigger side effects if needed, but don't block
+    ref.listen(bootstrapProvider, (_, __) {});
 
-    return bootstrap.when(
-      loading: () => const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      ),
-      error: (err, stack) => _buildApp(router), // Continue even on error
-      data: (_) => _buildApp(router),
-    );
-  }
-
-  Widget _buildApp(GoRouter router) {
     return MaterialApp.router(
       title: 'DOT',
       theme: AppTheme.darkTheme,

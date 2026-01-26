@@ -26,3 +26,5 @@ final scanRepositoryProvider = Provider<ScanRepository>((ref) {
 final scanTextUseCaseProvider = Provider((ref) {
   return ScanTextUseCase(ref.read(scanRepositoryProvider));
 });
+
+final tableCountsProvider = StateProvider<Map<String, int>>((ref) => {});
