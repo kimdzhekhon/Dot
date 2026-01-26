@@ -393,20 +393,36 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             
             if (state.score != null && state.score! >= 0 && state.scanType != ScanType.phoneNumber) ...[
               const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '위험도 점수: ${state.score} / 100',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: color,
+              Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '위험도 점수: ${state.score} / 100',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
                   ),
-                ),
+                  if (state.scanType == ScanType.address && state.details?['webList']?['found'] == true) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '등록 주체: ${state.details!['webList']['reg_subject'] ?? '정보 없음'}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '등록일: ${state.details!['webList']['reg_date'] ?? '정보 없음'}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black54),
+                    ),
+                  ],
+                ],
               ),
             ],
 
@@ -586,6 +602,30 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            color: Colors.black54,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 15,
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],

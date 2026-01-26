@@ -70,19 +70,22 @@ class ScanRepositoryImpl implements ScanRepository {
           
           if (webListResult['found'] == true) {
             final isWhitelisted = webListResult['status'] == 'whitelisted';
+            final regSubject = webListResult['reg_subject'] ?? '정보 없음';
+            final regDate = webListResult['reg_date'] ?? '정보 없음';
+
             if (isWhitelisted) {
               return Right(ScanResult(
                 score: 0,
                 isSafe: true,
                 message: "${webListResult['site_name']}\n공식 인증된 안전한 사이트입니다.",
-                details: webListResult,
+                details: {'webList': webListResult},
               ));
             } else if (webListResult['status'] == 'blacklisted') {
               return Right(ScanResult(
                 score: 100,
                 isSafe: false,
                 message: "블랙리스트에 등록된 위험한 사이트입니다.",
-                details: webListResult,
+                details: {'webList': webListResult},
               ));
             }
           }

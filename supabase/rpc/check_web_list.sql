@@ -11,10 +11,13 @@ SECURITY INVOKER
 AS $$
 DECLARE
   v_site_name text;
+  v_reg_subject text;
+  v_reg_date text;
   v_found_blacklist boolean;
 BEGIN
   -- 1. Check Whitelist (Web_Whitelist)
-  SELECT "사이트명" INTO v_site_name 
+  SELECT "사이트명", "등록 주체", "등록 날짜" 
+  INTO v_site_name, v_reg_subject, v_reg_date
   FROM "Web_Whitelist" 
   WHERE "주소" = p_url 
   LIMIT 1;
@@ -23,21 +26,25 @@ BEGIN
     RETURN jsonb_build_object(
       'found', true, 
       'status', 'whitelisted', 
-      'site_name', v_site_name
+      'site_name', v_site_name,
+      'reg_subject', v_reg_subject,
+      'reg_date', v_reg_date
     );
   END IF;
 
   -- 2. Check Blacklist (Web_Blacklist)
-  SELECT EXISTS (
-    SELECT 1 
-    FROM "Web_Blacklist" 
-    WHERE "홈페이지주소" = p_url
-  ) INTO v_found_blacklist;
+  SELECT "등록 주체", "등록 날짜"
+  INTO v_reg_subject, v_reg_date
+  FROM "Web_Blacklist" 
+  WHERE "홈페이지주소" = p_url
+  LIMIT 1;
 
-  IF v_found_blacklist THEN
+  IF FOUND THEN
     RETURN jsonb_build_object(
       'found', true, 
-      'status', 'blacklisted'
+      'status', 'blacklisted',
+      'reg_subject', v_reg_subject,
+      'reg_date', v_reg_date
     );
   END IF;
 
