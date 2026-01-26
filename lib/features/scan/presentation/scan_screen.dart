@@ -619,7 +619,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             focusNode: _phoneFocusNode,
             keyboardType: TextInputType.url,
             inputFormatters: [
-               FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\.-]')),
+               FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\.\-\/\:\?\=\&\%]')),
             ],
             autofocus: true,
             textAlign: TextAlign.left,
