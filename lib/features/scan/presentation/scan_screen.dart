@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dot/core/design_system/app_responsive_layout.dart';
 import 'package:dot/core/design_system/app_theme.dart';
+import 'package:dot/core/design_system/app_button.dart';
+import 'package:go_router/go_router.dart';
 import 'package:dot/features/scan/presentation/dot_animation.dart';
 import 'package:dot/features/scan/presentation/scan_controller.dart';
 import 'package:dot/features/scan/domain/scan_type.dart';
@@ -64,53 +66,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
          return;
       }
 
-      // [TEST] 문자 메시지 분석 시 URL 추출 테스트
+      // [TEST] 문자 메시지 분석 시 URL 추출 테스트 -> 결과 화면으로 이동
       if (scanType == ScanType.message) {
         final urls = UrlUtil.extractUrls(text);
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('URL 추출 테스트'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('원본 텍스트:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  Text(text, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-                  const SizedBox(height: 16),
-                  const Text('추출된 URL:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  if (urls.isNotEmpty)
-                    ...urls.map((u) => Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(u, style: const TextStyle(color: Colors.blue)),
-                    )).toList()
-                  else
-                    const Text('검출된 URL 없음', style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('닫기'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ref.read(scanProvider.notifier).analyzeText(text); 
-                  FocusScope.of(context).unfocus();
-                },
-                child: const Text('계속 진행'),
-              ),
-            ],
-          ),
-        );
+        context.push('/url-extract-result', extra: {
+          'text': text,
+          'urls': urls,
+        });
         return;
       }
 
@@ -212,7 +174,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         child: Row(
           children: [
             // Ensure Icon is visible
-            Icon(icon, color: AppTheme.analyzing, size: 28),
+            Icon(icon, color: AppTheme.primary, size: 28),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -307,34 +269,35 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 children: [
-                  // Other types (Message, Address) - Keep Box Style
-                  Container(
-                    height: 200,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  // Other types (Message) - Expanded Box Style
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        maxLines: null,
+                        expands: true,
+                        style: const TextStyle(fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: _getHintText(state.scanType ?? ScanType.message),
+                          hintStyle: const TextStyle(color: Colors.black38),
+                          border: InputBorder.none,
                         ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _textController,
-                      maxLines: null,
-                      expands: true,
-                      style: const TextStyle(fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: _getHintText(state.scanType ?? ScanType.message),
-                        hintStyle: const TextStyle(color: Colors.black38),
-                        border: InputBorder.none,
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 20),
                   _buildAnalyzeButton(state),
                   const SizedBox(height: 20),
                 ],
@@ -344,30 +307,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   Widget _buildAnalyzeButton(ScanState state) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: (state.scanType == ScanType.phoneNumber)
+    return AppButton(
+      text: (state.scanType == ScanType.phoneNumber || state.scanType == ScanType.address) ? '검색하기' : '분석하기',
+      onPressed: (state.scanType == ScanType.phoneNumber)
           ? (PhoneNumberFormatter.isValid(_textController.text, true) ? _onSubmit : null)
           : (_textController.text.isNotEmpty ? _onSubmit : null),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.analyzing,
-          disabledBackgroundColor: Colors.black12,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          (state.scanType == ScanType.phoneNumber || state.scanType == ScanType.address) ? '검색하기' : '분석하기',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      backgroundColor: AppTheme.primary,
     );
   }
 
@@ -439,20 +384,20 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: AppTheme.analyzing.withValues(alpha: 0.1),
+                    color: AppTheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(CupertinoIcons.search, size: 16, color: AppTheme.analyzing),
+                      Icon(CupertinoIcons.search, size: 16, color: AppTheme.primary),
                       const SizedBox(width: 8),
                       Text(
                         '인터넷 사기 의심 전화·계좌번호 조회',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.analyzing,
+                          color: AppTheme.primary,
                         ),
                       ),
                     ],
@@ -566,26 +511,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             const Spacer(),
 
             // Actions
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _onReset,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A80FF),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  '다시 분석하기',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+            AppButton(
+              text: '다시 분석하기',
+              onPressed: _onReset,
+              backgroundColor: AppTheme.primary,
             ),
             const SizedBox(height: 40),
           ],
@@ -596,7 +525,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   Color _getStatusColor(DotState state, ScanType? type) {
     if (type == ScanType.phoneNumber && state == DotState.safe) {
-      return AppTheme.analyzing; // Blue for verified info
+      return AppTheme.primary; // Blue for verified info
     }
     switch (state) {
       case DotState.safe: return AppTheme.safe;
