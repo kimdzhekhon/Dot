@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon/app_icon.png" width="120" alt="Dot Logo" />
+</p>
+
 # Dot
 
 **Dot**은 온디바이스(On-device) 텍스트 임베딩 모델을 활용해 수신된 텍스트를 실시간(Real-time)으로 분석하고, 벡터 데이터베이스와의 **코사인 유사도(Cosine Similarity)**를 연산하여 스팸 가능성을 판별하는 지능형 필터링 애플리케이션입니다.
